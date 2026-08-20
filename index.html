@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Controle de Despesas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/componentes.css">
+</head>
+<body class="nao-autenticado">
+
+    <div class="tela-login">
+        <div class="tela-login-card">
+            <h1>💰 Controle de Despesas</h1>
+            <p>Entre com o e-mail e senha cadastrados.</p>
+            <form id="formLogin">
+                <label>E-mail
+                    <input type="email" id="loginEmail" required autocomplete="username">
+                </label>
+                <label>Senha
+                    <input type="password" id="loginSenha" required autocomplete="current-password">
+                </label>
+                <button type="submit" id="btnEntrar" class="botao-primario">Entrar</button>
+            </form>
+            <p id="loginErro" class="tela-login-erro" hidden></p>
+        </div>
+    </div>
+
+    <header>
+        <h1>💰 Controle de Despesas</h1>
+        <div class="header-utilitarios">
+            <span id="usuarioLogado" class="usuario-logado"></span>
+            <button type="button" id="btnSair" class="botao-icone" title="Sair">⏻</button>
+        </div>
+    </header>
+
+    <main>
+
+        <section class="cartao">
+            <h2>Novo gasto</h2>
+            <p class="descricao-campo">Escreva como você falaria: "Gastei 10 reais na padaria no crédito".</p>
+            <form id="formNovaDespesa" class="form-nova-despesa">
+                <input type="text" id="inputTextoDespesa" placeholder="Gastei 10 reais na padaria no crédito..." autocomplete="off" required>
+                <button type="submit" id="btnRegistrarDespesa" class="botao-primario">Registrar</button>
+            </form>
+            <p id="resultadoRegistro" class="resultado-registro" hidden></p>
+        </section>
+
+        <section class="cartao">
+            <div class="filtros-linha">
+                <label>Mês
+                    <select id="filtroMes"></select>
+                </label>
+                <label>Pessoa
+                    <select id="filtroPessoa"></select>
+                </label>
+                <label>Categoria
+                    <select id="filtroCategoria"></select>
+                </label>
+            </div>
+        </section>
+
+        <div id="kpisDespesas" class="kpi-grid"></div>
+
+        <section class="cartao">
+            <h2>Despesas</h2>
+            <div id="listaDespesas"></div>
+        </section>
+
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config/supabase.js"></script>
+    <script src="js/core/state.js"></script>
+    <script src="js/services/auth.js"></script>
+    <script src="js/services/despesas.js"></script>
+    <script src="js/ui/login.js"></script>
+    <script src="js/ui/dashboard.js"></script>
+    <script src="js/core/app.js"></script>
+
+</body>
+</html>

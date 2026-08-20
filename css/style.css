@@ -1,0 +1,184 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+[hidden]{
+    display: none !important;
+}
+
+:root{
+
+    --cor-fundo: #F1F5F9;
+    --cor-fundo-card: #FFFFFF;
+    --cor-fundo-elevado: #F8FAFC;
+    --cor-borda: #E2E8F0;
+
+    --cor-texto: #0F172A;
+    --cor-texto-suave: #64748B;
+
+    --cor-primaria: #059669;
+    --cor-primaria-hover: #047857;
+
+    --cor-erro: #DC2626;
+    --cor-aviso: #D97706;
+    --cor-sucesso: #059669;
+
+    --cor-sombra: rgba(15, 23, 42, 0.08);
+
+    --raio-card: 16px;
+    --raio-botao: 999px;
+
+}
+
+body{
+    background: var(--cor-fundo);
+    color: var(--cor-texto);
+}
+
+header{
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    padding: 16px 24px;
+
+    background: #064E3B;
+
+}
+
+header h1{
+    font-size: 18px;
+    color: white;
+}
+
+.header-utilitarios{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.usuario-logado{
+    font-size: 13px;
+    color: #A7F3D0;
+}
+
+.botao-icone{
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+
+    color: #A7F3D0;
+    font-size: 16px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.botao-icone:hover{
+    background: rgba(255, 255, 255, 0.12);
+}
+
+body.nao-autenticado header,
+body.nao-autenticado main{
+    display: none;
+}
+
+.tela-login{
+    display: none;
+
+    position: fixed;
+    inset: 0;
+
+    align-items: center;
+    justify-content: center;
+
+    background: #064E3B;
+}
+
+body.nao-autenticado .tela-login{
+    display: flex;
+}
+
+.tela-login-card{
+    width: 100%;
+    max-width: 360px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+
+    padding: 32px;
+
+    background: #FFFFFF;
+    border-radius: var(--raio-card);
+}
+
+.tela-login-card h1{
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.tela-login-card > p{
+    font-size: 13px;
+    color: var(--cor-texto-suave);
+    margin-bottom: 16px;
+}
+
+.tela-login-card form{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tela-login-card label{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--cor-texto-suave);
+}
+
+.tela-login-card input{
+    background: var(--cor-fundo-elevado);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--cor-texto);
+}
+
+.tela-login-card .botao-primario{
+    width: 100%;
+    justify-content: center;
+    margin-top: 6px;
+}
+
+.tela-login-erro{
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--cor-erro);
+    text-align: center;
+}
+
+main{
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}

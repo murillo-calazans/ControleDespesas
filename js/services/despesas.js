@@ -1,0 +1,75 @@
+/**
+ * ==========================================================
+ * Serviço de Despesas
+ * ==========================================================
+ * registrarDespesa() manda o texto livre pra Edge Function
+ * parse-despesa (que chama a IA e já grava — ver
+ * supabase/functions/parse-despesa/index.ts); buscarDespesas() lê
+ * tudo de volta do Supabase pro dashboard renderizar.
+ */
+
+/**
+ * Registra uma despesa a partir de texto livre (ex.: "Gastei 10 reais
+ * na padaria no crédito"). Retorna:
+ * - { ok: true, registrado: true, despesa, usuarioNome } — gravou.
+ * - { ok: true, registrado: false } — a IA não entendeu isso como
+ *   um gasto (ex.: "oi"), nada foi gravado.
+ * - { ok: false, mensagem } — erro (rede, IA fora do ar, etc.).
+ */
+async function registrarDespesa(texto) {
+    const { data, error } = await supabaseClient.functions.invoke("parse-despesa", {
+        body: { texto }
+    });
+
+    if (error) {
+        console.error("Falha ao chamar parse-despesa:", error);
+        return { ok: false, mensagem: "Falha ao registrar. Veja o console pra detalhes." };
+    }
+
+    if (data?.error) {
+        return { ok: false, mensagem: data.error };
+    }
+
+    return { ok: true, registrado: data.registrado, despesa: data.despesa, usuarioNome: data.usuarioNome };
+}
+
+/**
+ * Busca todas as despesas do casal (RLS já garante que só quem está
+ * logado como um dos dois usuários enxerga isso), com o nome de quem
+ * registrou já resolvido via o relacionamento com "usuarios".
+ */
+async function buscarDespesas() {
+    const { data, error } = await supabaseClient
+        .from("despesas")
+        .select("*, usuarios(nome)")
+        .order("data_despesa", { ascending: false })
+        .order("criado_em", { ascending: false });
+
+    if (error) {
+        console.error("Falha ao buscar despesas:", error);
+        return [];
+    }
+
+    return data.map(linha => ({
+        id: linha.id,
+        usuarioId: linha.usuario_id,
+        usuarioNome: linha.usuarios?.nome ?? "-",
+        valor: Number(linha.valor),
+        categoria: linha.categoria,
+        formaPagamento: linha.forma_pagamento,
+        descricao: linha.descricao,
+        dataDespesa: linha.data_despesa,
+        mensagemOriginal: linha.mensagem_original,
+        confiancaIA: linha.confianca_ia
+    }));
+}
+
+/** Remove uma despesa (RLS exige estar logado como um dos dois usuários). */
+async function excluirDespesa(id) {
+    const { error } = await supabaseClient.from("despesas").delete().eq("id", id);
+    if (error) {
+        console.error("Falha ao excluir despesa:", error);
+        return false;
+    }
+    return true;
+}
