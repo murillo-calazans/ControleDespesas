@@ -24,7 +24,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+// llama-3.3-70b-versatile foi descontinuado pela Groq — openai/gpt-oss-120b
+// é o modelo de propósito geral recomendado no lugar (com suporte a JSON
+// mode), disponível no tier gratuito.
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
