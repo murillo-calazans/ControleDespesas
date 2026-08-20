@@ -8,7 +8,7 @@
  * no painel do Supabase) depois de rodar database/schema-supabase.sql.
  */
 
-const SUPABASE_URL = "COLE-A-URL-DO-SEU-PROJETO-AQUI";
-const SUPABASE_ANON_KEY = "COLE-A-ANON-KEY-AQUI";
+const SUPABASE_URL = "https://phdufmylxnjgdrdqeyel.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_PZe4jt2FZc39dwLNoi_F_A_vfd956Q4";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
