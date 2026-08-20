@@ -57,21 +57,42 @@ async function aoRegistrarDespesa(evento) {
         return;
     }
 
-    if (!resposta.registrado) {
-        mostrarResultadoRegistro("🤔 Não entendi isso como um gasto — tenta reformular?", "aviso");
+    if (resposta.tipo === "nenhum" || !resposta.registrado) {
+        mostrarResultadoRegistro("🤔 Não entendi isso como um gasto ou investimento — tenta reformular?", "aviso");
+        return;
+    }
+
+    if (resposta.tipo === "investimento") {
+        const inv = resposta.investimento;
+        mostrarResultadoRegistro(
+            `💹 Investimento registrado: ${formatarMoeda(inv.valor)}${inv.conta ? ` — ${inv.conta}` : ""}`,
+            "sucesso"
+        );
+        input.value = "";
+        APP.investimentos = await buscarInvestimentos();
+        APP.carteiras = await buscarCarteiras();
+        renderizarInvestimentos();
+        renderizarCarteiras();
         return;
     }
 
     const d = resposta.despesa;
     const alerta = d.confianca_ia === "baixa" || d.confianca_ia === "media" ? "⚠️ Não tenho certeza — confere: " : "✅ Registrado: ";
+    const notaFixo = resposta.fixoRegistrado ? " 🔁 (marcado como fixo, vai lançar todo mês)" : "";
     mostrarResultadoRegistro(
-        `${alerta}${formatarMoeda(d.valor)} — ${d.categoria} — ${d.forma_pagamento}${d.descricao ? ` — "${d.descricao}"` : ""}`,
+        `${alerta}${formatarMoeda(d.valor)} — ${d.categoria} — ${d.forma_pagamento}${d.descricao ? ` — "${d.descricao}"` : ""}${notaFixo}`,
         d.confianca_ia === "alta" ? "sucesso" : "aviso"
     );
 
     input.value = "";
     APP.despesas = await buscarDespesas();
+    APP.carteiras = await buscarCarteiras();
     renderizarDashboard();
+    renderizarCarteiras();
+    if (resposta.fixoRegistrado) {
+        APP.despesasFixas = await buscarDespesasFixas();
+        renderizarDespesasFixas();
+    }
 }
 
 function mostrarResultadoRegistro(texto, tipo) {
@@ -81,11 +102,31 @@ function mostrarResultadoRegistro(texto, tipo) {
     resultado.hidden = false;
 }
 
-/** Roda depois de login e depois de qualquer registro/exclusão novo. */
+/** Roda depois de login — busca tudo de uma vez (despesas, carteiras,
+ *  cartões, investimentos, despesas fixas) e renderiza cada aba. */
 async function inicializarDadosAutenticado() {
-    APP.despesas = await buscarDespesas();
+    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas] = await Promise.all([
+        buscarDespesas(),
+        buscarCarteiras(),
+        buscarMovimentos(),
+        buscarCartoes(),
+        buscarInvestimentos(),
+        buscarDespesasFixas()
+    ]);
+
+    APP.despesas = despesas;
+    APP.carteiras = carteiras;
+    APP.movimentosCarteira = movimentosCarteira;
+    APP.cartoes = cartoes;
+    APP.investimentos = investimentos;
+    APP.despesasFixas = despesasFixas;
+
     popularFiltros();
     renderizarDashboard();
+    renderizarCarteiras();
+    renderizarCartoes();
+    renderizarInvestimentos();
+    renderizarDespesasFixas();
 }
 
 function popularFiltros() {
@@ -217,7 +258,9 @@ async function aoExcluirDespesa(id) {
     }
 
     APP.despesas = APP.despesas.filter(d => String(d.id) !== String(id));
+    APP.carteiras = await buscarCarteiras();
     renderizarDashboard();
+    renderizarCarteiras();
 }
 
 function formatarMoeda(valor) {

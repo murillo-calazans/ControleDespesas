@@ -9,6 +9,11 @@ document.addEventListener("DOMContentLoaded", iniciarSistema);
 async function iniciarSistema() {
     registrarLogin();
     registrarDashboard();
+    registrarAbas();
+    registrarCarteiras();
+    registrarCartoes();
+    registrarInvestimentos();
+    registrarDespesasFixas();
 
     const sessao = await obterSessaoAtual();
 

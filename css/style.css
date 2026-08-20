@@ -90,6 +90,7 @@ header h1{
 }
 
 body.nao-autenticado header,
+body.nao-autenticado nav,
 body.nao-autenticado main{
     display: none;
 }

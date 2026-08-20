@@ -49,7 +49,8 @@
     gap: 10px;
 }
 
-.form-nova-despesa input{
+.form-nova-despesa input,
+.form-nova-despesa select{
     flex: 1;
 
     background: var(--cor-fundo-elevado);
@@ -186,4 +187,49 @@
     color: var(--cor-texto-suave);
     font-size: 13px;
     padding: 16px 0;
+}
+
+[data-aba-conteudo]{
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+[data-aba-conteudo][hidden]{
+    display: none;
+}
+
+.abas{
+    display: flex;
+    gap: 8px;
+    padding: 12px 24px 0;
+    max-width: 1000px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+}
+
+.abas button{
+    background: transparent;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-botao);
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--cor-texto-suave);
+    cursor: pointer;
+    transition: .2s;
+}
+
+.abas button.aba-ativa{
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: white;
+}
+
+.cartao-clicavel{
+    cursor: pointer;
+    transition: .2s;
+}
+
+.cartao-clicavel:hover{
+    box-shadow: 0 2px 8px var(--cor-sombra);
 }

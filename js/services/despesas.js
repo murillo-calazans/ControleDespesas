@@ -30,7 +30,15 @@ async function registrarDespesa(texto) {
         return { ok: false, mensagem: data.error };
     }
 
-    return { ok: true, registrado: data.registrado, despesa: data.despesa, usuarioNome: data.usuarioNome };
+    return {
+        ok: true,
+        tipo: data.tipo,
+        registrado: data.registrado,
+        despesa: data.despesa,
+        investimento: data.investimento,
+        fixoRegistrado: data.fixoRegistrado,
+        usuarioNome: data.usuarioNome
+    };
 }
 
 /**
@@ -57,6 +65,8 @@ async function buscarDespesas() {
         valor: Number(linha.valor),
         categoria: linha.categoria,
         formaPagamento: linha.forma_pagamento,
+        cartaoId: linha.cartao_id,
+        despesaFixaId: linha.despesa_fixa_id,
         descricao: linha.descricao,
         dataDespesa: linha.data_despesa,
         mensagemOriginal: linha.mensagem_original,

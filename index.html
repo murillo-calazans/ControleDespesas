@@ -34,38 +34,119 @@
         </div>
     </header>
 
+    <nav class="abas">
+        <button type="button" data-aba="despesas" class="aba-ativa">Despesas</button>
+        <button type="button" data-aba="carteiras">Carteiras</button>
+        <button type="button" data-aba="cartoes">Cartões</button>
+        <button type="button" data-aba="fixas">Fixas</button>
+        <button type="button" data-aba="investimentos">Investimentos</button>
+    </nav>
+
     <main>
 
-        <section class="cartao">
-            <h2>Novo gasto</h2>
-            <p class="descricao-campo">Escreva como você falaria: "Gastei 10 reais na padaria no crédito".</p>
-            <form id="formNovaDespesa" class="form-nova-despesa">
-                <input type="text" id="inputTextoDespesa" placeholder="Gastei 10 reais na padaria no crédito..." autocomplete="off" required>
-                <button type="submit" id="btnRegistrarDespesa" class="botao-primario">Registrar</button>
-            </form>
-            <p id="resultadoRegistro" class="resultado-registro" hidden></p>
-        </section>
+        <div data-aba-conteudo="despesas">
 
-        <section class="cartao">
-            <div class="filtros-linha">
-                <label>Mês
-                    <select id="filtroMes"></select>
-                </label>
-                <label>Pessoa
-                    <select id="filtroPessoa"></select>
-                </label>
-                <label>Categoria
-                    <select id="filtroCategoria"></select>
-                </label>
-            </div>
-        </section>
+            <section class="cartao">
+                <h2>Novo gasto ou investimento</h2>
+                <p class="descricao-campo">Escreva como você falaria: "Gastei 10 reais na padaria no crédito cartão nubank", "Aluguel 1500 fixo" ou "Investi 500 na XP".</p>
+                <form id="formNovaDespesa" class="form-nova-despesa">
+                    <input type="text" id="inputTextoDespesa" placeholder="Gastei 10 reais na padaria no crédito..." autocomplete="off" required>
+                    <button type="submit" id="btnRegistrarDespesa" class="botao-primario">Registrar</button>
+                </form>
+                <p id="resultadoRegistro" class="resultado-registro" hidden></p>
+            </section>
 
-        <div id="kpisDespesas" class="kpi-grid"></div>
+            <section class="cartao">
+                <div class="filtros-linha">
+                    <label>Mês
+                        <select id="filtroMes"></select>
+                    </label>
+                    <label>Pessoa
+                        <select id="filtroPessoa"></select>
+                    </label>
+                    <label>Categoria
+                        <select id="filtroCategoria"></select>
+                    </label>
+                </div>
+            </section>
 
-        <section class="cartao">
-            <h2>Despesas</h2>
-            <div id="listaDespesas"></div>
-        </section>
+            <div id="kpisDespesas" class="kpi-grid"></div>
+
+            <section class="cartao">
+                <h2>Despesas</h2>
+                <div id="listaDespesas"></div>
+            </section>
+
+        </div>
+
+        <div data-aba-conteudo="carteiras" hidden>
+
+            <div id="kpisCarteiras" class="kpi-grid"></div>
+
+            <section class="cartao">
+                <h2>Novo movimento</h2>
+                <p class="descricao-campo">Depósito, retirada ou ajuste manual de saldo — não passa pela IA.</p>
+                <form id="formMovimentoCarteira" class="form-nova-despesa">
+                    <select id="movCarteiraId"></select>
+                    <select id="movTipo">
+                        <option value="deposito">Depósito</option>
+                        <option value="retirada">Retirada</option>
+                        <option value="ajuste">Ajuste</option>
+                    </select>
+                    <input type="number" step="0.01" min="0.01" id="movValor" placeholder="Valor" required>
+                    <input type="text" id="movDescricao" placeholder="Descrição (opcional)">
+                    <button type="submit" id="btnRegistrarMovimento" class="botao-primario">Registrar</button>
+                </form>
+            </section>
+
+            <section class="cartao">
+                <h2>Movimentos</h2>
+                <div id="listaMovimentos"></div>
+            </section>
+
+        </div>
+
+        <div data-aba-conteudo="cartoes" hidden>
+
+            <section class="cartao">
+                <h2>Novo cartão</h2>
+                <form id="formNovoCartao" class="form-nova-despesa">
+                    <input type="text" id="cartaoNome" placeholder="Nome (ex: Nubank)" autocomplete="off" required>
+                    <input type="number" min="1" max="31" id="cartaoDiaFechamento" placeholder="Dia de fechamento" required>
+                    <input type="number" min="1" max="31" id="cartaoDiaVencimento" placeholder="Dia de vencimento (opcional)">
+                    <button type="submit" id="btnCriarCartao" class="botao-primario">Cadastrar</button>
+                </form>
+            </section>
+
+            <div id="listaCartoes" class="kpi-grid"></div>
+
+            <div id="detalheFatura"></div>
+
+        </div>
+
+        <div data-aba-conteudo="fixas" hidden>
+
+            <div id="kpisFixas" class="kpi-grid"></div>
+
+            <section class="cartao">
+                <h2>Despesas fixas</h2>
+                <div id="listaDespesasFixas"></div>
+            </section>
+
+        </div>
+
+        <div data-aba-conteudo="investimentos" hidden>
+
+            <p class="descricao-campo">Use a caixa "Novo gasto ou investimento" na aba Despesas — diga algo como "Investi 500 na XP" e a IA já classifica sozinha.</p>
+
+            <div id="kpisInvestimentos" class="kpi-grid"></div>
+
+            <section class="cartao">
+                <h2>Investimentos</h2>
+                <div id="listaInvestimentos"></div>
+            </section>
+
+        </div>
 
     </main>
 
@@ -74,8 +155,17 @@
     <script src="js/core/state.js"></script>
     <script src="js/services/auth.js"></script>
     <script src="js/services/despesas.js"></script>
+    <script src="js/services/carteiras.js"></script>
+    <script src="js/services/cartoes.js"></script>
+    <script src="js/services/investimentos.js"></script>
+    <script src="js/services/despesasFixas.js"></script>
     <script src="js/ui/login.js"></script>
     <script src="js/ui/dashboard.js"></script>
+    <script src="js/ui/abas.js"></script>
+    <script src="js/ui/carteiras.js"></script>
+    <script src="js/ui/cartoes.js"></script>
+    <script src="js/ui/investimentos.js"></script>
+    <script src="js/ui/despesasFixas.js"></script>
     <script src="js/core/app.js"></script>
 
 </body>
