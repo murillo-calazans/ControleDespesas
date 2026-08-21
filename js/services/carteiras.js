@@ -67,3 +67,13 @@ async function registrarMovimento({ carteiraId, tipo, valor, descricao }) {
     }
     return true;
 }
+
+/** Remove um depósito/retirada/ajuste (o trigger no banco desfaz o efeito no saldo). */
+async function excluirMovimento(id) {
+    const { error } = await supabaseClient.from("carteira_movimentos").delete().eq("id", id);
+    if (error) {
+        console.error("Falha ao excluir movimento de carteira:", error);
+        return false;
+    }
+    return true;
+}

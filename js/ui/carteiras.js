@@ -87,6 +87,7 @@ function renderizarMovimentos() {
                     <th>Descrição</th>
                     <th>Registrado por</th>
                     <th>Valor</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -97,9 +98,28 @@ function renderizarMovimentos() {
                         <td>${escaparHtml(m.descricao || "-")}</td>
                         <td>${escaparHtml(m.registradoPorNome)}</td>
                         <td class="valor-cell">${m.tipo === "retirada" ? "-" : ""}${formatarMoeda(m.valor)}</td>
+                        <td><button type="button" class="botao-excluir" data-id="${m.id}" title="Excluir">&times;</button></td>
                     </tr>
                 `).join("")}
             </tbody>
         </table>
     `;
+
+    container.querySelectorAll(".botao-excluir").forEach(botao => {
+        botao.addEventListener("click", () => aoExcluirMovimento(botao.dataset.id));
+    });
+}
+
+async function aoExcluirMovimento(id) {
+    if (!confirm("Excluir esse movimento?")) return;
+
+    const ok = await excluirMovimento(id);
+    if (!ok) {
+        alert("Não foi possível excluir. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.movimentosCarteira = APP.movimentosCarteira.filter(m => String(m.id) !== String(id));
+    APP.carteiras = await buscarCarteiras();
+    renderizarCarteiras();
 }
