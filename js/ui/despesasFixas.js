@@ -128,6 +128,7 @@ async function aoAlternarDespesaFixa(id, ativaAtual) {
 
     APP.despesasFixas = await buscarDespesasFixas();
     renderizarDespesasFixas();
+    renderizarResumo();
 }
 
 async function aoExcluirDespesaFixa(id) {
@@ -141,4 +142,5 @@ async function aoExcluirDespesaFixa(id) {
 
     APP.despesasFixas = APP.despesasFixas.filter(f => String(f.id) !== String(id));
     renderizarDespesasFixas();
+    renderizarResumo();
 }

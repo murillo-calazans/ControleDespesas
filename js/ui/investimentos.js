@@ -93,4 +93,5 @@ async function aoExcluirInvestimento(id) {
     APP.carteiras = await buscarCarteiras();
     renderizarInvestimentos();
     renderizarCarteiras();
+    renderizarResumo();
 }

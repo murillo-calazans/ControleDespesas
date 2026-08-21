@@ -8,12 +8,15 @@ document.addEventListener("DOMContentLoaded", iniciarSistema);
 
 async function iniciarSistema() {
     registrarLogin();
+    registrarModal();
     registrarDashboard();
     registrarAbas();
     registrarCarteiras();
     registrarCartoes();
     registrarInvestimentos();
     registrarDespesasFixas();
+    registrarProjecao();
+    registrarInsights();
 
     const sessao = await obterSessaoAtual();
 

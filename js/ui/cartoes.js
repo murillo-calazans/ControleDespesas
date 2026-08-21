@@ -78,6 +78,20 @@ function despesasDaFatura(cartao, competencia) {
     );
 }
 
+/** Todas as competências ("YYYY-MM") com gasto nesse cartão — passadas
+ *  e futuras (parcelas já agendadas aparecem aqui mesmo antes de a
+ *  fatura fechar) — mais a competência atual, mesmo sem gasto ainda. */
+function competenciasDoCartao(cartao) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const chaves = new Set(
+        APP.despesas
+            .filter(d => d.cartaoId === cartao.id)
+            .map(d => competenciaFatura(d.dataDespesa, cartao.diaFechamento))
+    );
+    chaves.add(competenciaFatura(hojeISO, cartao.diaFechamento));
+    return [...chaves].sort();
+}
+
 async function selecionarCartao(cartaoId) {
     cartaoSelecionadoId = cartaoId;
     const cartao = APP.cartoes.find(c => String(c.id) === String(cartaoId));
@@ -201,6 +215,7 @@ function renderizarDetalheFatura() {
     const lista = despesasDaFatura(cartao, competenciaSelecionada);
     const total = lista.reduce((soma, d) => soma + d.valor, 0);
     const jaPaga = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === competenciaSelecionada);
+    const competencias = competenciasDoCartao(cartao);
 
     container.innerHTML = `
         <div class="cartao">
@@ -208,6 +223,19 @@ function renderizarDetalheFatura() {
                 <button type="button" id="btnFaturaAnterior" class="botao-icone">‹</button>
                 <h3>${escaparHtml(cartao.nome)} — Fatura de ${rotuloCompetencia(competenciaSelecionada)}</h3>
                 <button type="button" id="btnFaturaProxima" class="botao-icone">›</button>
+            </div>
+            <div class="tira-competencias">
+                ${competencias.map(comp => {
+                    const totalComp = despesasDaFatura(cartao, comp).reduce((soma, d) => soma + d.valor, 0);
+                    const pagaComp = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === comp);
+                    return `
+                        <button type="button" class="pill-competencia${comp === competenciaSelecionada ? " pill-competencia-ativa" : ""}" data-competencia="${comp}">
+                            <span class="pill-competencia-mes">${rotuloCompetencia(comp)}</span>
+                            <span class="pill-competencia-valor">${formatarMoeda(totalComp)}</span>
+                            ${pagaComp ? '<span class="pill-competencia-paga">✓ paga</span>' : ""}
+                        </button>
+                    `;
+                }).join("")}
             </div>
             <div class="kpi-grid">
                 <div class="stat-tile">
@@ -224,7 +252,7 @@ function renderizarDetalheFatura() {
                         ${lista.map(d => `
                             <tr>
                                 <td>${formatarDataBR(d.dataDespesa)}</td>
-                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}</td>
+                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
                                 <td>${escaparHtml(d.categoria)}</td>
                                 <td class="valor-cell">${formatarMoeda(d.valor)}</td>
                             </tr>
@@ -242,4 +270,14 @@ function renderizarDetalheFatura() {
     if (btnAnterior) btnAnterior.addEventListener("click", () => mudarCompetencia(-1));
     if (btnProxima) btnProxima.addEventListener("click", () => mudarCompetencia(1));
     if (btnMarcarPaga) btnMarcarPaga.addEventListener("click", aoMarcarFaturaPaga);
+
+    container.querySelectorAll("[data-competencia]").forEach(pill => {
+        pill.addEventListener("click", () => {
+            competenciaSelecionada = pill.dataset.competencia;
+            renderizarDetalheFatura();
+        });
+    });
+
+    const pillAtiva = container.querySelector(".pill-competencia-ativa");
+    if (pillAtiva) pillAtiva.scrollIntoView({ inline: "center", block: "nearest" });
 }

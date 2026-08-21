@@ -140,6 +140,15 @@
     margin-top: 2px;
 }
 
+.stat-tile-destaque{
+    border-color: var(--cor-primaria);
+    border-width: 2px;
+}
+
+.stat-tile-destaque .stat-valor{
+    color: var(--cor-primaria);
+}
+
 .tabela-despesas{
     width: 100%;
     border-collapse: collapse;
@@ -160,6 +169,18 @@
 }
 
 .tabela-despesas .valor-cell{
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.badge-parcela{
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--cor-fundo-elevado);
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-suave);
+    font-size: 11px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
@@ -232,4 +253,90 @@
 
 .cartao-clicavel:hover{
     box-shadow: 0 2px 8px var(--cor-sombra);
+}
+
+.tira-competencias{
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px 14px;
+}
+
+.pill-competencia{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    background: var(--cor-fundo-elevado);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--cor-texto-suave);
+}
+
+.pill-competencia:hover{
+    box-shadow: 0 2px 8px var(--cor-sombra);
+}
+
+.pill-competencia-ativa{
+    border-color: var(--cor-primaria);
+    border-width: 2px;
+    color: var(--cor-texto);
+}
+
+.pill-competencia-mes{
+    font-weight: 600;
+}
+
+.pill-competencia-valor{
+    font-variant-numeric: tabular-nums;
+}
+
+.pill-competencia-paga{
+    color: var(--cor-primaria);
+    font-size: 11px;
+}
+
+.modal-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+}
+
+.modal-caixa{
+    position: relative;
+    background: var(--cor-fundo-card);
+    border-radius: var(--raio-card);
+    padding: 28px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 30px var(--cor-sombra);
+}
+
+.modal-caixa h2{
+    margin-bottom: 12px;
+}
+
+.modal-fechar{
+    position: absolute;
+    top: 14px;
+    right: 14px;
+}
+
+.lista-dicas{
+    margin: 12px 0 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }

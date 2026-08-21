@@ -16,9 +16,9 @@
  *   um gasto (ex.: "oi"), nada foi gravado.
  * - { ok: false, mensagem } — erro (rede, IA fora do ar, etc.).
  */
-async function registrarDespesa(texto) {
+async function registrarDespesa(texto, pessoaAlvo) {
     const { data, error } = await supabaseClient.functions.invoke("parse-despesa", {
-        body: { texto }
+        body: { texto, pessoaAlvo: pessoaAlvo || null }
     });
 
     if (error) {
@@ -35,7 +35,10 @@ async function registrarDespesa(texto) {
         tipo: data.tipo,
         registrado: data.registrado,
         despesa: data.despesa,
+        parcelas: data.parcelas,
         investimento: data.investimento,
+        dividido: data.dividido,
+        valorTotal: data.valorTotal,
         fixoRegistrado: data.fixoRegistrado,
         usuarioNome: data.usuarioNome
     };
@@ -68,6 +71,9 @@ async function buscarDespesas() {
         cartaoId: linha.cartao_id,
         despesaFixaId: linha.despesa_fixa_id,
         descricao: linha.descricao,
+        parcelaAtual: linha.parcela_atual,
+        parcelaTotal: linha.parcela_total,
+        parcelaGrupoId: linha.parcela_grupo_id,
         dataDespesa: linha.data_despesa,
         mensagemOriginal: linha.mensagem_original,
         confiancaIA: linha.confianca_ia

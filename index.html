@@ -35,7 +35,8 @@
     </header>
 
     <nav class="abas">
-        <button type="button" data-aba="despesas" class="aba-ativa">Despesas</button>
+        <button type="button" data-aba="resumo" class="aba-ativa">Resumo</button>
+        <button type="button" data-aba="despesas">Despesas</button>
         <button type="button" data-aba="carteiras">Carteiras</button>
         <button type="button" data-aba="cartoes">Cartões</button>
         <button type="button" data-aba="fixas">Fixas</button>
@@ -44,13 +45,28 @@
 
     <main>
 
-        <div data-aba-conteudo="despesas">
+        <div data-aba-conteudo="resumo">
+
+            <section class="cartao">
+                <h2>Análises</h2>
+                <div class="filtros-linha">
+                    <button type="button" id="btnAbrirProjecao" class="botao-primario">📈 Projeção de saldo</button>
+                    <button type="button" id="btnAnalisarGastos" class="botao-primario">🧠 Onde economizar</button>
+                </div>
+            </section>
+
+            <div id="kpisResumo" class="kpi-grid"></div>
+
+        </div>
+
+        <div data-aba-conteudo="despesas" hidden>
 
             <section class="cartao">
                 <h2>Novo gasto ou investimento</h2>
                 <p class="descricao-campo">Escreva como você falaria: "Gastei 10 reais na padaria no crédito cartão nubank", "Aluguel 1500 fixo" ou "Investi 500 na XP".</p>
                 <form id="formNovaDespesa" class="form-nova-despesa">
                     <input type="text" id="inputTextoDespesa" placeholder="Gastei 10 reais na padaria no crédito..." autocomplete="off" required>
+                    <select id="inputPessoaDespesa" title="Quem gastou"></select>
                     <button type="submit" id="btnRegistrarDespesa" class="botao-primario">Registrar</button>
                 </form>
                 <p id="resultadoRegistro" class="resultado-registro" hidden></p>
@@ -150,6 +166,13 @@
 
     </main>
 
+    <div id="modalOverlay" class="modal-overlay" hidden>
+        <div class="modal-caixa">
+            <button type="button" id="btnFecharModal" class="botao-icone modal-fechar" title="Fechar">&times;</button>
+            <div id="modalConteudo"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config/supabase.js"></script>
     <script src="js/core/state.js"></script>
@@ -159,8 +182,13 @@
     <script src="js/services/cartoes.js"></script>
     <script src="js/services/investimentos.js"></script>
     <script src="js/services/despesasFixas.js"></script>
+    <script src="js/services/insights.js"></script>
     <script src="js/ui/login.js"></script>
+    <script src="js/ui/modal.js"></script>
     <script src="js/ui/dashboard.js"></script>
+    <script src="js/ui/resumo.js"></script>
+    <script src="js/ui/projecao.js"></script>
+    <script src="js/ui/insights.js"></script>
     <script src="js/ui/abas.js"></script>
     <script src="js/ui/carteiras.js"></script>
     <script src="js/ui/cartoes.js"></script>

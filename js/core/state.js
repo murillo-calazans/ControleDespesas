@@ -34,8 +34,8 @@ const APP = {
     investimentos: [],
     despesasFixas: [],
 
-    // Aba visível no momento ("despesas" | "carteiras" | "cartoes" | "fixas" | "investimentos").
-    abaAtiva: "despesas",
+    // Aba visível no momento ("resumo" | "despesas" | "carteiras" | "cartoes" | "fixas" | "investimentos").
+    abaAtiva: "resumo",
 
     filtros: {
         mes: null,        // "YYYY-MM" ou null (todos os meses)

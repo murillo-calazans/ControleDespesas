@@ -38,6 +38,7 @@ async function aoRegistrarMovimento(evento) {
     APP.carteiras = await buscarCarteiras();
     APP.movimentosCarteira = await buscarMovimentos();
     renderizarCarteiras();
+    renderizarResumo();
 }
 
 function renderizarCarteiras() {
@@ -122,4 +123,5 @@ async function aoExcluirMovimento(id) {
     APP.movimentosCarteira = APP.movimentosCarteira.filter(m => String(m.id) !== String(id));
     APP.carteiras = await buscarCarteiras();
     renderizarCarteiras();
+    renderizarResumo();
 }

@@ -71,7 +71,11 @@ Se a forma de pagamento for "crédito" e a mensagem citar um cartão, tente casa
 
 Se tipo="despesa" e a mensagem sugerir que é recorrente/mensal (palavras como "fixo", "todo mês", "mensal", "assinatura", "recorrente"), marque "fixo"=true. Caso contrário "fixo"=false.
 
+Se tipo="despesa" e a mensagem indicar uma compra parcelada — números como "2/5", "parcela 2 de 5", "em 5x", "3x de 100" — preencha "parcela_atual" e "parcela_total" com inteiros (ex.: "2/5" -> parcela_atual=2, parcela_total=5). Se a mensagem disser "em 5x" sem indicar qual parcela, assuma parcela_atual=1. Se a mensagem der o valor TOTAL da compra (ex.: "sofá de 3000 em 6x"), calcule "valor" como o valor de UMA parcela (3000/6=500), não o total. Se a mensagem já disser quanto foi pago naquela parcela (ex.: "paguei roupas 500, parcela 2/5"), use esse valor direto, sem dividir. Se não houver menção a parcelamento, "parcela_atual" e "parcela_total" ficam null. Uma compra parcelada nunca é "fixo" — se detectar parcelamento, marque "fixo"=false.
+
 Se tipo="investimento", tente identificar em "conta" a corretora/banco/plataforma citada (ex.: "XP", "Nubank", "Binance"); se não identificar, "conta"=null.
+
+Em "descricao", devolva um resumo curto e limpo do que foi comprado/pago (1 a 4 palavras), sempre em português correto (corrija erros de digitação). Nunca inclua nela o valor, a forma de pagamento, o cartão, a parcela (tipo "2/5") ou palavras como "fixo"/"todo mês"/"mensal". Exemplos: "870 Alugel fixo" -> "Aluguel"; "gastei 50 reais de uber" -> "Uber"; "paguei a conta de luz" -> "Conta de luz"; "30 no ifood no crédito" -> "iFood"; "paguei roupas 500 2/5" -> "Roupas". Se não der pra extrair nada específico, use o nome da categoria.
 
 Se faltar a forma de pagamento numa despesa, use "outro".
 Se faltar a data, ou a mensagem disser "hoje", use a data de hoje (${dataAtualISO}). Se disser "ontem" ou um dia da semana, calcule a partir de hoje.
@@ -80,8 +84,23 @@ Se o valor ou a categoria não puderem ser inferidos com razoável certeza, aind
 Mensagem: "${texto}"
 
 Responda APENAS com um JSON no formato exato:
-{"tipo": "despesa"|"investimento"|"nenhum", "valor": number|null, "categoria": string|null, "forma_pagamento": string|null, "cartao": string|null, "conta": string|null, "descricao": string|null, "data": "YYYY-MM-DD"|null, "fixo": boolean, "confianca": "alta"|"media"|"baixa"|null}
+{"tipo": "despesa"|"investimento"|"nenhum", "valor": number|null, "categoria": string|null, "forma_pagamento": string|null, "cartao": string|null, "conta": string|null, "descricao": string|null, "data": "YYYY-MM-DD"|null, "fixo": boolean, "parcela_atual": number|null, "parcela_total": number|null, "confianca": "alta"|"media"|"baixa"|null}
 Nada de texto antes ou depois do JSON.`;
+}
+
+/** Soma "meses" à data ISO informada, mantendo o dia (ou o último dia
+ *  do mês alvo, se o mês for mais curto — ex.: 31/01 + 1 mês -> 28 ou
+ *  29/02). Usada pra espalhar as parcelas de uma compra parcelada,
+ *  uma por mês, a partir da data da mensagem. */
+function somarMeses(dataISO: string, meses: number): string {
+    if (meses === 0) return dataISO;
+    const [ano, mes, dia] = dataISO.split("-").map(Number);
+    const totalMeses = (mes - 1) + meses;
+    const anoAlvo = ano + Math.floor(totalMeses / 12);
+    const mesAlvo = ((totalMeses % 12) + 12) % 12;
+    const ultimoDiaMesAlvo = new Date(Date.UTC(anoAlvo, mesAlvo + 1, 0)).getUTCDate();
+    const diaAlvo = Math.min(dia, ultimoDiaMesAlvo);
+    return `${anoAlvo}-${String(mesAlvo + 1).padStart(2, "0")}-${String(diaAlvo).padStart(2, "0")}`;
 }
 
 /** Casa o nome de cartão citado na mensagem com um cartão cadastrado
@@ -163,15 +182,29 @@ Deno.serve(async (req: Request) => {
             return jsonResponse({ error: "Usuário não cadastrado em 'usuarios'." }, 403);
         }
 
-        const { texto } = await req.json();
+        const { texto, pessoaAlvo } = await req.json();
         if (!texto || typeof texto !== "string" || !texto.trim()) {
             return jsonResponse({ error: "texto é obrigatório." }, 400);
         }
 
-        const { data: cartoesAtivos } = await admin
-            .from("cartoes")
-            .select("id, nome")
-            .eq("ativo", true);
+        const [{ data: cartoesAtivos }, { data: todosUsuarios }] = await Promise.all([
+            admin.from("cartoes").select("id, nome").eq("ativo", true),
+            admin.from("usuarios").select("id"),
+        ]);
+
+        // "pessoaAlvo" vem do seletor Isabela/Murillo/Ambos no campo de
+        // texto — deixa qualquer um dos dois lançar em nome do outro (ou
+        // dividir 1/2 pra cada). Só aceita um id que exista mesmo em
+        // "usuarios" (nunca confia cegamente no que o cliente manda); sem
+        // seletor ou valor inválido, cai no comportamento de sempre (quem
+        // está logado).
+        const idsValidos = (todosUsuarios ?? []).map((u: { id: string }) => u.id);
+        const usuariosAlvo: string[] =
+            pessoaAlvo === "ambos" && idsValidos.length > 0
+                ? idsValidos
+                : typeof pessoaAlvo === "string" && idsValidos.includes(pessoaAlvo)
+                    ? [pessoaAlvo]
+                    : [usuario.id];
 
         const dataAtualISO = new Date().toISOString().slice(0, 10);
         const prompt = montarPrompt(texto.trim(), dataAtualISO, (cartoesAtivos ?? []).map((c: { nome: string }) => c.nome));
@@ -228,21 +261,21 @@ Deno.serve(async (req: Request) => {
         const dataResultado = /^\d{4}-\d{2}-\d{2}$/.test(extraido.data ?? "") ? extraido.data : dataAtualISO;
 
         if (tipo === "investimento") {
-            const novoInvestimento = {
-                usuario_id: usuario.id,
-                valor,
+            const valorPorPessoa = valor / usuariosAlvo.length;
+            const linhasInvestimento = usuariosAlvo.map(uid => ({
+                usuario_id: uid,
+                valor: valorPorPessoa,
                 conta: extraido.conta ?? null,
                 descricao: extraido.descricao ?? null,
                 data_investimento: dataResultado,
                 mensagem_original: texto.trim(),
                 confianca_ia: confianca,
-            };
+            }));
 
-            const { data: inserido, error: erroInsercao } = await admin
+            const { data: inseridos, error: erroInsercao } = await admin
                 .from("investimentos")
-                .insert(novoInvestimento)
-                .select()
-                .single();
+                .insert(linhasInvestimento)
+                .select();
 
             if (erroInsercao) {
                 console.error("Erro ao gravar investimento:", erroInsercao);
@@ -251,53 +284,117 @@ Deno.serve(async (req: Request) => {
 
             return jsonResponse({
                 ok: true, tipo: "investimento", registrado: true,
-                investimento: inserido, usuarioNome: usuario.nome,
+                investimento: inseridos[0], dividido: usuariosAlvo.length > 1, valorTotal: valor,
+                usuarioNome: usuario.nome,
             }, 200);
         }
 
         // tipo === "despesa"
         const categoria = CATEGORIAS.includes(extraido.categoria) ? extraido.categoria : "Outros";
-        const formaPagamento = FORMAS_PAGAMENTO.includes(extraido.forma_pagamento) ? extraido.forma_pagamento : "outro";
+
+        // Compra parcelada ("2/5", "em 5x") — sem forma de pagamento
+        // explícita, assume crédito (é como parcelamento normalmente
+        // acontece).
+        const parcelaAtualBruta = Number(extraido.parcela_atual);
+        const parcelaTotalBruta = Number(extraido.parcela_total);
+        const temParcelas = Number.isInteger(parcelaAtualBruta) && Number.isInteger(parcelaTotalBruta)
+            && parcelaAtualBruta >= 1 && parcelaTotalBruta >= parcelaAtualBruta && parcelaTotalBruta <= 60;
+
+        const formaPagamento = FORMAS_PAGAMENTO.includes(extraido.forma_pagamento)
+            ? extraido.forma_pagamento
+            : (temParcelas ? "crédito" : "outro");
         const descricao = extraido.descricao ?? null;
         const cartaoId = encontrarCartao(extraido.cartao ?? null, formaPagamento, cartoesAtivos ?? []);
 
-        let despesaFixaId: number | null = null;
-        if (extraido.fixo === true) {
-            despesaFixaId = await resolverDespesaFixaId(admin, usuario.id, categoria, valor, descricao);
-            if (despesaFixaId === null) {
-                const diaLancamento = Number(dataResultado.slice(8, 10));
-                const { data: novaFixa, error: erroFixa } = await admin
-                    .from("despesas_fixas")
-                    .insert({
-                        usuario_id: usuario.id, valor, categoria, forma_pagamento: formaPagamento,
-                        cartao_id: cartaoId, descricao, dia_lancamento: diaLancamento,
+        const valorPorPessoa = valor / usuariosAlvo.length;
+
+        if (temParcelas) {
+            const parcelaGrupoId = crypto.randomUUID();
+            const linhas = [];
+            for (let n = parcelaAtualBruta; n <= parcelaTotalBruta; n++) {
+                for (const uid of usuariosAlvo) {
+                    linhas.push({
+                        usuario_id: uid,
+                        valor: valorPorPessoa,
+                        categoria,
+                        forma_pagamento: formaPagamento,
+                        cartao_id: cartaoId,
+                        descricao,
+                        data_despesa: somarMeses(dataResultado, n - parcelaAtualBruta),
                         mensagem_original: texto.trim(),
-                    })
-                    .select("id")
-                    .single();
-                if (erroFixa) console.error("Erro ao criar despesa fixa (seguindo sem marcar):", erroFixa);
-                else despesaFixaId = novaFixa.id;
+                        confianca_ia: confianca,
+                        despesa_fixa_id: null,
+                        parcela_atual: n,
+                        parcela_total: parcelaTotalBruta,
+                        parcela_grupo_id: parcelaGrupoId,
+                    });
+                }
             }
+
+            const { data: inseridas, error: erroInsercaoParcelas } = await admin
+                .from("despesas")
+                .insert(linhas)
+                .select();
+
+            if (erroInsercaoParcelas) {
+                console.error("Erro ao gravar despesas parceladas:", erroInsercaoParcelas);
+                return jsonResponse({ error: "Entendi a compra parcelada, mas falhou ao salvar." }, 500);
+            }
+
+            return jsonResponse({
+                ok: true, tipo: "despesa", registrado: true,
+                despesa: inseridas[0], parcelas: inseridas.filter(d => d.usuario_id === inseridas[0].usuario_id),
+                dividido: usuariosAlvo.length > 1, valorTotal: valor,
+                usuarioNome: usuario.nome, fixoRegistrado: false,
+            }, 200);
         }
 
-        const novaDespesa = {
-            usuario_id: usuario.id,
-            valor,
-            categoria,
-            forma_pagamento: formaPagamento,
-            cartao_id: cartaoId,
-            descricao,
-            data_despesa: dataResultado,
-            mensagem_original: texto.trim(),
-            confianca_ia: confianca,
-            despesa_fixa_id: despesaFixaId,
-        };
+        // Uma linha de despesa por pessoa em "usuariosAlvo" (normalmente
+        // só quem está logado; duas linhas — valor dividido ao meio — se
+        // o seletor no campo de texto estiver em "Ambos"). Despesa fixa
+        // também precisa de um template por pessoa, já que
+        // despesas_fixas.usuario_id não aceita null.
+        let algumFixoRegistrado = false;
+        const linhasDespesa = [];
+        for (const uid of usuariosAlvo) {
+            let despesaFixaId: number | null = null;
+            if (extraido.fixo === true) {
+                despesaFixaId = await resolverDespesaFixaId(admin, uid, categoria, valorPorPessoa, descricao);
+                if (despesaFixaId === null) {
+                    const diaLancamento = Number(dataResultado.slice(8, 10));
+                    const { data: novaFixa, error: erroFixa } = await admin
+                        .from("despesas_fixas")
+                        .insert({
+                            usuario_id: uid, valor: valorPorPessoa, categoria, forma_pagamento: formaPagamento,
+                            cartao_id: cartaoId, descricao, dia_lancamento: diaLancamento,
+                            mensagem_original: texto.trim(),
+                        })
+                        .select("id")
+                        .single();
+                    if (erroFixa) console.error("Erro ao criar despesa fixa (seguindo sem marcar):", erroFixa);
+                    else despesaFixaId = novaFixa.id;
+                }
+                if (despesaFixaId !== null) algumFixoRegistrado = true;
+            }
 
-        const { data: inserida, error: erroInsercao } = await admin
+            linhasDespesa.push({
+                usuario_id: uid,
+                valor: valorPorPessoa,
+                categoria,
+                forma_pagamento: formaPagamento,
+                cartao_id: cartaoId,
+                descricao,
+                data_despesa: dataResultado,
+                mensagem_original: texto.trim(),
+                confianca_ia: confianca,
+                despesa_fixa_id: despesaFixaId,
+            });
+        }
+
+        const { data: inseridas, error: erroInsercao } = await admin
             .from("despesas")
-            .insert(novaDespesa)
-            .select()
-            .single();
+            .insert(linhasDespesa)
+            .select();
 
         if (erroInsercao) {
             console.error("Erro ao gravar despesa:", erroInsercao);
@@ -305,8 +402,9 @@ Deno.serve(async (req: Request) => {
         }
 
         return jsonResponse({
-            ok: true, tipo: "despesa", registrado: true, despesa: inserida,
-            usuarioNome: usuario.nome, fixoRegistrado: despesaFixaId !== null,
+            ok: true, tipo: "despesa", registrado: true, despesa: inseridas[0],
+            dividido: usuariosAlvo.length > 1, valorTotal: valor,
+            usuarioNome: usuario.nome, fixoRegistrado: algumFixoRegistrado,
         }, 200);
 
     } catch (erro) {

@@ -45,10 +45,12 @@ async function aoRegistrarDespesa(evento) {
     const texto = input.value.trim();
     if (!texto) return;
 
+    const pessoaAlvo = document.getElementById("inputPessoaDespesa")?.value || null;
+
     botao.disabled = true;
     resultado.hidden = true;
 
-    const resposta = await registrarDespesa(texto);
+    const resposta = await registrarDespesa(texto, pessoaAlvo);
 
     botao.disabled = false;
 
@@ -64,8 +66,9 @@ async function aoRegistrarDespesa(evento) {
 
     if (resposta.tipo === "investimento") {
         const inv = resposta.investimento;
+        const notaDivisaoInv = resposta.dividido ? ` (${formatarMoeda(resposta.valorTotal)} no total, dividido)` : "";
         mostrarResultadoRegistro(
-            `💹 Investimento registrado: ${formatarMoeda(inv.valor)}${inv.conta ? ` — ${inv.conta}` : ""}`,
+            `💹 Investimento registrado: ${formatarMoeda(inv.valor)}${notaDivisaoInv}${inv.conta ? ` — ${inv.conta}` : ""}`,
             "sucesso"
         );
         input.value = "";
@@ -73,14 +76,19 @@ async function aoRegistrarDespesa(evento) {
         APP.carteiras = await buscarCarteiras();
         renderizarInvestimentos();
         renderizarCarteiras();
+        renderizarResumo();
         return;
     }
 
     const d = resposta.despesa;
     const alerta = d.confianca_ia === "baixa" || d.confianca_ia === "media" ? "⚠️ Não tenho certeza — confere: " : "✅ Registrado: ";
     const notaFixo = resposta.fixoRegistrado ? " 🔁 (marcado como fixo, vai lançar todo mês)" : "";
+    const notaParcela = resposta.parcelas && resposta.parcelas.length > 1
+        ? ` 📆 (parcela ${d.parcela_atual}/${d.parcela_total} — as próximas ${resposta.parcelas.length - 1} já foram agendadas)`
+        : "";
+    const notaDivisao = resposta.dividido ? ` (${formatarMoeda(resposta.valorTotal)} no total, dividido)` : "";
     mostrarResultadoRegistro(
-        `${alerta}${formatarMoeda(d.valor)} — ${d.categoria} — ${d.forma_pagamento}${d.descricao ? ` — "${d.descricao}"` : ""}${notaFixo}`,
+        `${alerta}${formatarMoeda(d.valor)}${notaDivisao} — ${d.categoria} — ${d.forma_pagamento}${d.descricao ? ` — "${d.descricao}"` : ""}${notaFixo}${notaParcela}`,
         d.confianca_ia === "alta" ? "sucesso" : "aviso"
     );
 
@@ -89,6 +97,7 @@ async function aoRegistrarDespesa(evento) {
     APP.carteiras = await buscarCarteiras();
     renderizarDashboard();
     renderizarCarteiras();
+    renderizarResumo();
     if (resposta.fixoRegistrado) {
         APP.despesasFixas = await buscarDespesasFixas();
         renderizarDespesasFixas();
@@ -127,25 +136,37 @@ async function inicializarDadosAutenticado() {
     renderizarCartoes();
     renderizarInvestimentos();
     renderizarDespesasFixas();
+    renderizarResumo();
 }
 
 function popularFiltros() {
     const filtroMes = document.getElementById("filtroMes");
     const filtroPessoa = document.getElementById("filtroPessoa");
     const filtroCategoria = document.getElementById("filtroCategoria");
-    if (!filtroMes || !filtroPessoa || !filtroCategoria) return;
+    const inputPessoaDespesa = document.getElementById("inputPessoaDespesa");
 
-    const meses = [...new Set(APP.despesas.map(d => d.dataDespesa.slice(0, 7)))].sort().reverse();
-    filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
-        meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
+    if (filtroMes && filtroPessoa && filtroCategoria) {
+        const meses = [...new Set(APP.despesas.map(d => d.dataDespesa.slice(0, 7)))].sort().reverse();
+        filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
+            meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
 
-    const pessoas = new Map();
-    for (const d of APP.despesas) pessoas.set(d.usuarioId, d.usuarioNome);
-    filtroPessoa.innerHTML = '<option value="">Todos</option>' +
-        [...pessoas.entries()].map(([id, nome]) => `<option value="${id}">${escaparHtml(nome)}</option>`).join("");
+        const pessoas = new Map();
+        for (const d of APP.despesas) pessoas.set(d.usuarioId, d.usuarioNome);
+        filtroPessoa.innerHTML = '<option value="">Todos</option>' +
+            [...pessoas.entries()].map(([id, nome]) => `<option value="${id}">${escaparHtml(nome)}</option>`).join("");
 
-    filtroCategoria.innerHTML = '<option value="">Todas as categorias</option>' +
-        CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join("");
+        filtroCategoria.innerHTML = '<option value="">Todas as categorias</option>' +
+            CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join("");
+    }
+
+    // Quem está lançando o gasto/investimento — parte de APP.carteiras
+    // (1:1 com usuarios, sempre carregado) em vez de APP.despesas, que
+    // pode estar vazio num casal recém-cadastrado.
+    if (inputPessoaDespesa) {
+        inputPessoaDespesa.innerHTML = '<option value="">Eu</option>' +
+            APP.carteiras.map(c => `<option value="${c.usuarioId}">${escaparHtml(c.usuarioNome)}</option>`).join("") +
+            '<option value="ambos">Ambos (dividir)</option>';
+    }
 }
 
 function rotuloMes(chaveMes) {
@@ -231,7 +252,7 @@ function renderizarTabela(lista) {
                 ${lista.map(d => `
                     <tr>
                         <td>${formatarDataBR(d.dataDespesa)}</td>
-                        <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}</td>
+                        <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
                         <td>${escaparHtml(d.categoria)}</td>
                         <td>${escaparHtml(d.formaPagamento)}</td>
                         <td>${escaparHtml(d.usuarioNome)}</td>
@@ -261,6 +282,7 @@ async function aoExcluirDespesa(id) {
     APP.carteiras = await buscarCarteiras();
     renderizarDashboard();
     renderizarCarteiras();
+    renderizarResumo();
 }
 
 function formatarMoeda(valor) {
