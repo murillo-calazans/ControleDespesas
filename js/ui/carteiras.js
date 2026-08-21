@@ -6,9 +6,17 @@
  * trigger) + formulário de depósito/retirada/ajuste manual + histórico.
  */
 
+let filtroMesCarteiras = null; // "YYYY-MM" ou null (todos os meses)
+
 function registrarCarteiras() {
     const form = document.getElementById("formMovimentoCarteira");
     if (form) form.addEventListener("submit", aoRegistrarMovimento);
+
+    const filtroMes = document.getElementById("filtroMesCarteiras");
+    if (filtroMes) filtroMes.addEventListener("change", () => {
+        filtroMesCarteiras = filtroMes.value || null;
+        renderizarMovimentos();
+    });
 }
 
 async function aoRegistrarMovimento(evento) {
@@ -44,7 +52,18 @@ async function aoRegistrarMovimento(evento) {
 function renderizarCarteiras() {
     renderizarKpisCarteiras();
     renderizarSelectCarteiras();
+    popularFiltroMesCarteiras();
     renderizarMovimentos();
+}
+
+function popularFiltroMesCarteiras() {
+    const select = document.getElementById("filtroMesCarteiras");
+    if (!select) return;
+
+    const meses = [...new Set(APP.movimentosCarteira.map(m => m.criadoEm.slice(0, 7)))].sort().reverse();
+    select.innerHTML = '<option value="">Todos os meses</option>' +
+        meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
+    select.value = filtroMesCarteiras || "";
 }
 
 function renderizarKpisCarteiras() {
@@ -72,8 +91,12 @@ function renderizarMovimentos() {
     const container = document.getElementById("listaMovimentos");
     if (!container) return;
 
-    if (APP.movimentosCarteira.length === 0) {
-        container.innerHTML = '<p class="alerta-vazio">Nenhum movimento ainda.</p>';
+    const lista = filtroMesCarteiras
+        ? APP.movimentosCarteira.filter(m => m.criadoEm.slice(0, 7) === filtroMesCarteiras)
+        : APP.movimentosCarteira;
+
+    if (lista.length === 0) {
+        container.innerHTML = '<p class="alerta-vazio">Nenhum movimento encontrado.</p>';
         return;
     }
 
@@ -92,7 +115,7 @@ function renderizarMovimentos() {
                 </tr>
             </thead>
             <tbody>
-                ${APP.movimentosCarteira.map(m => `
+                ${lista.map(m => `
                     <tr>
                         <td>${formatarDataBR(m.criadoEm.slice(0, 10))}</td>
                         <td>${rotulos[m.tipo] ?? m.tipo}</td>

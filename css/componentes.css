@@ -173,6 +173,22 @@
     font-variant-numeric: tabular-nums;
 }
 
+.select-pessoa-linha{
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 4px 6px;
+    font-size: 13px;
+    color: var(--cor-texto);
+    cursor: pointer;
+}
+
+.select-pessoa-linha:hover,
+.select-pessoa-linha:focus{
+    border-color: var(--cor-borda);
+    background: var(--cor-fundo-elevado);
+}
+
 .badge-parcela{
     display: inline-block;
     padding: 1px 7px;

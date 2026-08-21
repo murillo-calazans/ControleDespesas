@@ -255,7 +255,11 @@ function renderizarTabela(lista) {
                         <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
                         <td>${escaparHtml(d.categoria)}</td>
                         <td>${escaparHtml(d.formaPagamento)}</td>
-                        <td>${escaparHtml(d.usuarioNome)}</td>
+                        <td>
+                            <select class="select-pessoa-linha" data-id-despesa="${d.id}">
+                                ${APP.carteiras.map(c => `<option value="${c.usuarioId}"${String(c.usuarioId) === String(d.usuarioId) ? " selected" : ""}>${escaparHtml(c.usuarioNome)}</option>`).join("")}
+                            </select>
+                        </td>
                         <td class="valor-cell">${formatarMoeda(d.valor)}</td>
                         <td><button type="button" class="botao-excluir" data-id="${d.id}" title="Excluir">&times;</button></td>
                     </tr>
@@ -267,6 +271,24 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".botao-excluir").forEach(botao => {
         botao.addEventListener("click", () => aoExcluirDespesa(botao.dataset.id));
     });
+
+    container.querySelectorAll(".select-pessoa-linha").forEach(select => {
+        select.addEventListener("change", () => aoAlterarPessoaDespesa(select.dataset.idDespesa, select.value));
+    });
+}
+
+async function aoAlterarPessoaDespesa(id, usuarioId) {
+    const ok = await atualizarPessoaDespesa(id, usuarioId);
+    if (!ok) {
+        alert("Não foi possível reatribuir a despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    APP.carteiras = await buscarCarteiras();
+    renderizarDashboard();
+    renderizarCarteiras();
+    renderizarResumo();
 }
 
 async function aoExcluirDespesa(id) {

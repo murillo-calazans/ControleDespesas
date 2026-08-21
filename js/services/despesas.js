@@ -80,6 +80,18 @@ async function buscarDespesas() {
     }));
 }
 
+/** Reatribui uma despesa já existente pra outra pessoa (o trigger de
+ *  saldo no banco já lida certo com a troca — estorna do dono antigo,
+ *  debita do novo, exceto em crédito, que só debita quando a fatura é paga). */
+async function atualizarPessoaDespesa(id, usuarioId) {
+    const { error } = await supabaseClient.from("despesas").update({ usuario_id: usuarioId }).eq("id", id);
+    if (error) {
+        console.error("Falha ao reatribuir despesa:", error);
+        return false;
+    }
+    return true;
+}
+
 /** Remove uma despesa (RLS exige estar logado como um dos dois usuários). */
 async function excluirDespesa(id) {
     const { error } = await supabaseClient.from("despesas").delete().eq("id", id);
