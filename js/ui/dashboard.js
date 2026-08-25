@@ -426,7 +426,9 @@ function renderizarTabela(lista) {
                         : `<option value="${escaparHtml(chaveAtual)}" selected>${escaparHtml(d.formaPagamento)}</option>`;
                     return `
                     <tr>
-                        <td>${formatarDataBR(d.dataDespesa)}</td>
+                        <td>
+                            <input type="date" class="input-data-linha" data-id-despesa="${d.id}" value="${d.dataDespesa}">
+                        </td>
                         <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
                         <td>
                             <select class="select-categoria-linha" data-id-despesa="${d.id}">
@@ -469,6 +471,23 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".select-categoria-linha").forEach(select => {
         select.addEventListener("change", () => aoAlterarCategoriaDespesa(select.dataset.idDespesa, select.value));
     });
+
+    container.querySelectorAll(".input-data-linha").forEach(input => {
+        input.addEventListener("change", () => aoAlterarDataDespesa(input.dataset.idDespesa, input.value));
+    });
+}
+
+async function aoAlterarDataDespesa(id, dataISO) {
+    if (!dataISO) return;
+
+    const ok = await atualizarDataDespesa(id, dataISO);
+    if (!ok) {
+        alert("Não foi possível reatribuir a data da despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    renderizarDashboard();
 }
 
 async function aoAlterarCategoriaDespesa(id, categoria) {

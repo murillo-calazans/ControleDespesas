@@ -216,7 +216,8 @@
 
 .select-pessoa-linha,
 .select-forma-pagamento-linha,
-.select-categoria-linha{
+.select-categoria-linha,
+.input-data-linha{
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -231,7 +232,9 @@
 .select-forma-pagamento-linha:hover,
 .select-forma-pagamento-linha:focus,
 .select-categoria-linha:hover,
-.select-categoria-linha:focus{
+.select-categoria-linha:focus,
+.input-data-linha:hover,
+.input-data-linha:focus{
     border-color: var(--cor-borda);
     background: var(--cor-fundo-elevado);
 }

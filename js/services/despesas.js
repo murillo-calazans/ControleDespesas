@@ -133,6 +133,16 @@ async function atualizarCategoriaDespesa(id, categoria) {
     return true;
 }
 
+/** Reatribui a data de uma despesa já existente. */
+async function atualizarDataDespesa(id, dataISO) {
+    const { error } = await supabaseClient.from("despesas").update({ data_despesa: dataISO }).eq("id", id);
+    if (error) {
+        console.error("Falha ao reatribuir data da despesa:", error);
+        return false;
+    }
+    return true;
+}
+
 /** Remove uma despesa (RLS exige estar logado como um dos dois usuários). */
 async function excluirDespesa(id) {
     const { error } = await supabaseClient.from("despesas").delete().eq("id", id);
