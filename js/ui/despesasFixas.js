@@ -67,6 +67,11 @@ function renderizarKpisFixas() {
             <div class="stat-valor">${formatarMoeda(projecao)}</div>
             <div class="stat-sublinha">fixos + média das variáveis dos últimos meses</div>
         </div>
+        <div class="stat-tile">
+            <div class="stat-label">Lançamento automático</div>
+            <div class="stat-valor">5º dia útil</div>
+            <div class="stat-sublinha">dia do salário, todo mês</div>
+        </div>
     `;
 }
 
@@ -85,7 +90,6 @@ function renderizarListaDespesasFixas() {
                 <tr>
                     <th>Descrição</th>
                     <th>Categoria</th>
-                    <th>Dia do lançamento</th>
                     <th>Valor</th>
                     <th>Status</th>
                     <th></th>
@@ -96,7 +100,6 @@ function renderizarListaDespesasFixas() {
                     <tr>
                         <td>${escaparHtml(f.descricao || "-")}</td>
                         <td>${escaparHtml(f.categoria)}</td>
-                        <td>Dia ${f.diaLancamento}</td>
                         <td class="valor-cell">${formatarMoeda(f.valor)}</td>
                         <td>
                             <button type="button" class="botao-icone" data-toggle-id="${f.id}" data-ativa="${f.ativa}">

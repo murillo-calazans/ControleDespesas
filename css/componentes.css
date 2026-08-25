@@ -173,8 +173,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+.linha-despesa-virtual{
+    color: var(--cor-texto-suave);
+    font-style: italic;
+}
+
 .select-pessoa-linha,
-.select-forma-pagamento-linha{
+.select-forma-pagamento-linha,
+.select-categoria-linha{
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -187,7 +193,9 @@
 .select-pessoa-linha:hover,
 .select-pessoa-linha:focus,
 .select-forma-pagamento-linha:hover,
-.select-forma-pagamento-linha:focus{
+.select-forma-pagamento-linha:focus,
+.select-categoria-linha:hover,
+.select-categoria-linha:focus{
     border-color: var(--cor-borda);
     background: var(--cor-fundo-elevado);
 }

@@ -114,6 +114,16 @@ async function atualizarFormaPagamentoDespesa(id, formaPagamento, cartaoId) {
     return true;
 }
 
+/** Reatribui a categoria de uma despesa já existente. */
+async function atualizarCategoriaDespesa(id, categoria) {
+    const { error } = await supabaseClient.from("despesas").update({ categoria }).eq("id", id);
+    if (error) {
+        console.error("Falha ao reatribuir categoria da despesa:", error);
+        return false;
+    }
+    return true;
+}
+
 /** Remove uma despesa (RLS exige estar logado como um dos dois usuários). */
 async function excluirDespesa(id) {
     const { error } = await supabaseClient.from("despesas").delete().eq("id", id);

@@ -5,9 +5,9 @@
  * O template em si é criado automaticamente pela Edge Function
  * parse-despesa quando a IA detecta um gasto recorrente (ver
  * resolverDespesaFixaId em supabase/functions/parse-despesa/index.ts).
- * O lançamento mensal automático roda no banco via pg_cron
- * (lancar_despesas_fixas, ver database/schema-carteiras-cartoes-fixas.sql).
- * Aqui só busca/pausa/exclui.
+ * O lançamento mensal automático roda no banco via pg_cron, sempre no
+ * 5º dia útil do mês pra todo mundo (ver lancar_despesas_fixas em
+ * database/schema-fixas-quinto-dia-util.sql). Aqui só busca/pausa/exclui.
  */
 
 async function buscarDespesasFixas() {
@@ -31,9 +31,9 @@ async function buscarDespesasFixas() {
         cartaoId: linha.cartao_id,
         cartaoNome: linha.cartoes?.nome ?? null,
         descricao: linha.descricao,
-        diaLancamento: linha.dia_lancamento,
         ativa: linha.ativa,
-        compartilhada: linha.compartilhada
+        compartilhada: linha.compartilhada,
+        criadoEm: linha.criado_em
     }));
 }
 

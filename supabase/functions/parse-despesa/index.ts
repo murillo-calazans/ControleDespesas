@@ -37,7 +37,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 // e database/schema-carteiras-cartoes-fixas.sql). Se mudar uma, muda as outras.
 const CATEGORIAS = [
     "Alimentação", "Mercado", "Transporte", "Saúde", "Lazer",
-    "Casa", "Educação", "Assinaturas", "Compras", "Outros",
+    "Casa", "Educação", "Assinaturas", "Compras",
+    "Filho", "Pessoal", "Presentes", "Lanche", "Outros",
 ];
 const FORMAS_PAGAMENTO = ["crédito", "débito", "pix", "dinheiro", "saque", "outro"];
 const CONFIANCAS = ["alta", "media", "baixa"];
@@ -367,12 +368,14 @@ Deno.serve(async (req: Request) => {
         if (extraido.fixo === true) {
             despesaFixaId = await resolverDespesaFixaId(admin, usuarioIdAlvo, categoria, valor, descricao, compartilhada);
             if (despesaFixaId === null) {
-                const diaLancamento = Number(dataResultado.slice(8, 10));
+                // Lançamento automático mensal é sempre no 5º dia útil do
+                // mês (dia do salário) pra todo mundo — ver
+                // database/schema-fixas-quinto-dia-util.sql.
                 const { data: novaFixa, error: erroFixa } = await admin
                     .from("despesas_fixas")
                     .insert({
                         usuario_id: usuarioIdAlvo, valor, categoria, forma_pagamento: formaPagamento,
-                        cartao_id: cartaoId, descricao, dia_lancamento: diaLancamento,
+                        cartao_id: cartaoId, descricao,
                         mensagem_original: texto.trim(), compartilhada,
                     })
                     .select("id")

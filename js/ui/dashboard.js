@@ -12,7 +12,8 @@
 // Edge Function parse-despesa — usada só pro filtro de categoria.
 const CATEGORIAS = [
     "Alimentação", "Mercado", "Transporte", "Saúde", "Lazer",
-    "Casa", "Educação", "Assinaturas", "Compras", "Outros"
+    "Casa", "Educação", "Assinaturas", "Compras",
+    "Filho", "Pessoal", "Presentes", "Lanche", "Outros"
 ];
 
 function registrarDashboard() {
@@ -146,10 +147,12 @@ function popularFiltros() {
     const inputPessoaDespesa = document.getElementById("inputPessoaDespesa");
 
     if (filtroMes && filtroPessoa && filtroCategoria) {
-        // Sempre inclui o mês atual na lista, mesmo sem nenhuma despesa
-        // lançada nele ainda, senão não daria pra selecioná-lo como padrão.
+        // Sempre inclui do mês atual até dezembro (mesmo sem despesa
+        // lançada neles ainda), pra dar pra selecionar meses futuros e já
+        // ver a projeção das despesas fixas neles (ver
+        // despesasFixasVirtuaisParaMes).
         const mesAtual = new Date().toISOString().slice(0, 7);
-        const meses = [...new Set([mesAtual, ...APP.despesas.map(d => d.dataDespesa.slice(0, 7))])].sort().reverse();
+        const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.despesas.map(d => d.dataDespesa.slice(0, 7))])].sort().reverse();
         filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
             meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
 
@@ -185,18 +188,86 @@ function rotuloMes(chaveMes) {
     return `${nomes[Number(mes) - 1]}/${ano}`;
 }
 
+/** Todos os meses ("YYYY-MM") de "mesInicial" até dezembro do mesmo ano. */
+function mesesAteFimDoAno(mesInicial) {
+    const [ano, mes] = mesInicial.split("-").map(Number);
+    const meses = [];
+    for (let m = mes; m <= 12; m++) meses.push(`${ano}-${String(m).padStart(2, "0")}`);
+    return meses;
+}
+
+/** Filtro de pessoa/categoria (não de mês — usado tanto pras despesas
+ *  reais quanto pras fixas projetadas, ver despesasFixasVirtuaisParaMes). */
+function correspondeFiltroPessoaCategoria(d) {
+    if (APP.filtros.usuarioId) {
+        // Despesa compartilhada entra no filtro de qualquer uma das duas
+        // pessoas (é metade de cada um), não só de quem registrou.
+        const pertenceAoFiltro = String(d.usuarioId) === String(APP.filtros.usuarioId) || d.compartilhada;
+        if (!pertenceAoFiltro) return false;
+    }
+    if (APP.filtros.categoria && d.categoria !== APP.filtros.categoria) return false;
+    return true;
+}
+
 function aplicarFiltros() {
     return APP.despesas.filter(d => {
         if (APP.filtros.mes && d.dataDespesa.slice(0, 7) !== APP.filtros.mes) return false;
-        if (APP.filtros.usuarioId) {
-            // Despesa compartilhada entra no filtro de qualquer uma das
-            // duas pessoas (é metade de cada um), não só de quem registrou.
-            const pertenceAoFiltro = String(d.usuarioId) === String(APP.filtros.usuarioId) || d.compartilhada;
-            if (!pertenceAoFiltro) return false;
-        }
-        if (APP.filtros.categoria && d.categoria !== APP.filtros.categoria) return false;
-        return true;
+        return correspondeFiltroPessoaCategoria(d);
     });
+}
+
+/** 5º dia útil (seg-sex, sem calendário de feriados) do mês "mesChave"
+ *  — mesma regra de quinto_dia_util() no banco (ver
+ *  database/schema-fixas-quinto-dia-util.sql), usada aqui só pra
+ *  estimar a data de exibição da projeção. */
+function quintoDiaUtilISO(mesChave) {
+    const [ano, mes] = mesChave.split("-").map(Number);
+    let contador = 0;
+    for (let dia = 1; dia <= 31; dia++) {
+        const data = new Date(ano, mes - 1, dia);
+        if (data.getMonth() !== mes - 1) break;
+        const diaSemana = data.getDay();
+        if (diaSemana >= 1 && diaSemana <= 5) {
+            contador++;
+            if (contador === 5) return `${mesChave}-${String(dia).padStart(2, "0")}`;
+        }
+    }
+    return `${mesChave}-01`;
+}
+
+/** Despesas fixas ativas que ainda não têm lançamento real em
+ *  "mesChave" (o cron só cria no 5º dia útil daquele mês — ver
+ *  database/schema-fixas-quinto-dia-util.sql) — devolve uma "despesa"
+ *  projetada pra cada uma, só pra exibição (nunca gravada, não pode
+ *  ser editada/excluída). Assim o mês aparece completo no relatório
+ *  mesmo antes do lançamento automático acontecer. */
+function despesasFixasVirtuaisParaMes(mesChave) {
+    if (!mesChave) return [];
+
+    return APP.despesasFixas
+        .filter(f => f.ativa
+            && f.criadoEm.slice(0, 7) <= mesChave
+            && !APP.despesas.some(d => d.despesaFixaId === f.id && d.dataDespesa.slice(0, 7) === mesChave))
+        .map(f => ({
+            id: `fixa-${f.id}-${mesChave}`,
+            usuarioId: f.usuarioId,
+            usuarioNome: f.usuarioNome,
+            valor: f.valor,
+            categoria: f.categoria,
+            formaPagamento: f.formaPagamento,
+            cartaoId: f.cartaoId,
+            despesaFixaId: f.id,
+            descricao: f.descricao,
+            parcelaAtual: null,
+            parcelaTotal: null,
+            parcelaGrupoId: null,
+            dataDespesa: quintoDiaUtilISO(mesChave),
+            mensagemOriginal: f.descricao || "Despesa fixa ainda não lançada",
+            confiancaIA: null,
+            compartilhada: f.compartilhada,
+            virtual: true
+        }))
+        .filter(correspondeFiltroPessoaCategoria);
 }
 
 /** Valor "de fato" de uma despesa no contexto do filtro de pessoa atual:
@@ -208,7 +279,10 @@ function valorEfetivo(despesa) {
 }
 
 function renderizarDashboard() {
-    const lista = aplicarFiltros();
+    // As despesas fixas projetadas só valem quando um mês específico
+    // está selecionado (não dá pra projetar em cima de "Todos os meses").
+    const lista = [...aplicarFiltros(), ...despesasFixasVirtuaisParaMes(APP.filtros.mes)]
+        .sort((a, b) => b.dataDespesa.localeCompare(a.dataDespesa));
     renderizarKpis(lista);
     renderizarTabela(lista);
 }
@@ -307,6 +381,20 @@ function renderizarTabela(lista) {
             </thead>
             <tbody>
                 ${lista.map(d => {
+                    if (d.virtual) {
+                        return `
+                        <tr class="linha-despesa-virtual" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês">
+                            <td>${formatarDataBR(d.dataDespesa)}</td>
+                            <td>${escaparHtml(d.descricao || d.mensagemOriginal)} <span class="badge-parcela">prevista</span></td>
+                            <td>${escaparHtml(d.categoria)}</td>
+                            <td>${escaparHtml(opcoesPagamento.find(op => op.valor === chaveFormaPagamento(d))?.rotulo ?? d.formaPagamento)}</td>
+                            <td>${escaparHtml(d.compartilhada ? "Ambos (dividir)" : d.usuarioNome)}</td>
+                            <td class="valor-cell">${formatarMoeda(valorEfetivo(d))}</td>
+                            <td></td>
+                        </tr>
+                    `;
+                    }
+
                     const chaveAtual = chaveFormaPagamento(d);
                     const opcaoFaltando = opcoesPagamento.some(op => op.valor === chaveAtual)
                         ? ""
@@ -315,7 +403,11 @@ function renderizarTabela(lista) {
                     <tr>
                         <td>${formatarDataBR(d.dataDespesa)}</td>
                         <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
-                        <td>${escaparHtml(d.categoria)}</td>
+                        <td>
+                            <select class="select-categoria-linha" data-id-despesa="${d.id}">
+                                ${CATEGORIAS.map(c => `<option value="${c}"${c === d.categoria ? " selected" : ""}>${c}</option>`).join("")}
+                            </select>
+                        </td>
                         <td>
                             <select class="select-forma-pagamento-linha" data-id-despesa="${d.id}">
                                 ${opcoesPagamento.map(op => `<option value="${op.valor}"${op.valor === chaveAtual ? " selected" : ""}>${escaparHtml(op.rotulo)}</option>`).join("")}
@@ -348,6 +440,21 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".select-forma-pagamento-linha").forEach(select => {
         select.addEventListener("change", () => aoAlterarFormaPagamentoDespesa(select.dataset.idDespesa, select.value));
     });
+
+    container.querySelectorAll(".select-categoria-linha").forEach(select => {
+        select.addEventListener("change", () => aoAlterarCategoriaDespesa(select.dataset.idDespesa, select.value));
+    });
+}
+
+async function aoAlterarCategoriaDespesa(id, categoria) {
+    const ok = await atualizarCategoriaDespesa(id, categoria);
+    if (!ok) {
+        alert("Não foi possível reatribuir a categoria da despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    renderizarDashboard();
 }
 
 async function aoAlterarFormaPagamentoDespesa(id, chave) {

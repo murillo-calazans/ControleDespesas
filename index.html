@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Controle de Despesas</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/componentes.css">
+    <link rel="stylesheet" href="css/style.css?v=202608251538">
+    <link rel="stylesheet" href="css/componentes.css?v=202608251538">
 </head>
 <body class="nao-autenticado">
 
@@ -183,28 +183,34 @@
         </div>
     </div>
 
+    <!-- ?v= nos arquivos locais é cache-busting manual: sem build step
+         nesse projeto, então o navegador só busca a versão nova de um
+         .js/.css depois de um deploy se essa query string mudar. Bump
+         esse valor (ex.: pra data/hora atual) sempre que mexer em
+         qualquer arquivo abaixo. Não precisa no script da CDN (já é
+         versionado no próprio nome do pacote, @2). -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/config/supabase.js"></script>
-    <script src="js/core/state.js"></script>
-    <script src="js/services/auth.js"></script>
-    <script src="js/services/despesas.js"></script>
-    <script src="js/services/carteiras.js"></script>
-    <script src="js/services/cartoes.js"></script>
-    <script src="js/services/investimentos.js"></script>
-    <script src="js/services/despesasFixas.js"></script>
-    <script src="js/services/insights.js"></script>
-    <script src="js/ui/login.js"></script>
-    <script src="js/ui/modal.js"></script>
-    <script src="js/ui/dashboard.js"></script>
-    <script src="js/ui/resumo.js"></script>
-    <script src="js/ui/projecao.js"></script>
-    <script src="js/ui/insights.js"></script>
-    <script src="js/ui/abas.js"></script>
-    <script src="js/ui/carteiras.js"></script>
-    <script src="js/ui/cartoes.js"></script>
-    <script src="js/ui/investimentos.js"></script>
-    <script src="js/ui/despesasFixas.js"></script>
-    <script src="js/core/app.js"></script>
+    <script src="js/config/supabase.js?v=202608251538"></script>
+    <script src="js/core/state.js?v=202608251538"></script>
+    <script src="js/services/auth.js?v=202608251538"></script>
+    <script src="js/services/despesas.js?v=202608251538"></script>
+    <script src="js/services/carteiras.js?v=202608251538"></script>
+    <script src="js/services/cartoes.js?v=202608251538"></script>
+    <script src="js/services/investimentos.js?v=202608251538"></script>
+    <script src="js/services/despesasFixas.js?v=202608251538"></script>
+    <script src="js/services/insights.js?v=202608251538"></script>
+    <script src="js/ui/login.js?v=202608251538"></script>
+    <script src="js/ui/modal.js?v=202608251538"></script>
+    <script src="js/ui/dashboard.js?v=202608251538"></script>
+    <script src="js/ui/resumo.js?v=202608251538"></script>
+    <script src="js/ui/projecao.js?v=202608251538"></script>
+    <script src="js/ui/insights.js?v=202608251538"></script>
+    <script src="js/ui/abas.js?v=202608251538"></script>
+    <script src="js/ui/carteiras.js?v=202608251538"></script>
+    <script src="js/ui/cartoes.js?v=202608251538"></script>
+    <script src="js/ui/investimentos.js?v=202608251538"></script>
+    <script src="js/ui/despesasFixas.js?v=202608251538"></script>
+    <script src="js/core/app.js?v=202608251538"></script>
 
 </body>
 </html>
