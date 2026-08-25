@@ -319,6 +319,13 @@ function renderizarKpis(lista) {
         }
     }
 
+    // Valor cheio (não a metade) de tudo que está marcado "Ambos" —
+    // só informativo, não entra na soma dos tiles por pessoa (essa já
+    // conta a metade de cada um separadamente).
+    const totalCompartilhado = lista
+        .filter(d => d.compartilhada)
+        .reduce((soma, d) => soma + d.valor, 0);
+
     container.innerHTML = `
         <div class="stat-tile">
             <div class="stat-label">Total no período</div>
@@ -332,6 +339,11 @@ function renderizarKpis(lista) {
             <div class="stat-label">Maior categoria</div>
             <div class="stat-valor">${categoriaTop ? categoriaTop[0] : "-"}</div>
             <div class="stat-sublinha">${categoriaTop ? formatarMoeda(categoriaTop[1]) : ""}</div>
+        </div>
+        <div class="stat-tile">
+            <div class="stat-label">Gasto em conjunto</div>
+            <div class="stat-valor">${formatarMoeda(totalCompartilhado)}</div>
+            <div class="stat-sublinha">despesas marcadas como Ambos, valor cheio</div>
         </div>
         ${[...porPessoa.entries()].map(([nome, valor]) => `
             <div class="stat-tile">
