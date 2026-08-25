@@ -197,6 +197,7 @@ function renderizarCartoes() {
         return `
             <div class="stat-tile cartao-clicavel" data-cartao-id="${c.id}">
                 <button type="button" class="botao-excluir" data-excluir-cartao-id="${c.id}" title="Excluir cartão">&times;</button>
+                ${statIcone("💳", "azul")}
                 <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
                 <div class="stat-valor">${formatarMoeda(total)}</div>
                 <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · fecha dia ${c.diaFechamento}</div>
@@ -276,11 +277,13 @@ function renderizarDetalheFatura() {
             </div>
             <div class="kpi-grid">
                 <div class="stat-tile">
+                    ${statIcone("🧾", "azul")}
                     <div class="stat-label">Total da fatura</div>
                     <div class="stat-valor">${formatarMoeda(totalFatura)}</div>
                     <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"}</div>
                 </div>
                 <div class="stat-tile">
+                    ${statIconePessoa(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "", opcoesPessoa.findIndex(op => op.id === pessoaFaturaSelecionada))}
                     <div class="stat-label">Fatura de ${escaparHtml(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "")}</div>
                     <div class="stat-valor">${formatarMoeda(totalExibido)}</div>
                 </div>

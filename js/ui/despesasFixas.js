@@ -59,15 +59,18 @@ function renderizarKpisFixas() {
 
     container.innerHTML = `
         <div class="stat-tile">
+            ${statIcone("🔁", "laranja")}
             <div class="stat-label">Total em gastos fixos</div>
             <div class="stat-valor">${formatarMoeda(totalFixas)}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("📈", "verde")}
             <div class="stat-label">Projeção do mês</div>
             <div class="stat-valor">${formatarMoeda(projecao)}</div>
             <div class="stat-sublinha">fixos + média das variáveis dos últimos meses</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("📅", "azul")}
             <div class="stat-label">Lançamento automático</div>
             <div class="stat-valor">5º dia útil</div>
             <div class="stat-sublinha">dia do salário, todo mês</div>

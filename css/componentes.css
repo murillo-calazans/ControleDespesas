@@ -63,6 +63,25 @@
     color: var(--cor-texto);
 }
 
+.form-nova-despesa .campo-com-icone{
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.campo-com-icone .campo-icone{
+    position: absolute;
+    left: 14px;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+.campo-com-icone input{
+    width: 100%;
+    padding-left: 38px;
+}
+
 .resultado-registro{
     margin-top: 14px;
     padding: 10px 14px;
@@ -95,7 +114,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 13px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
     color: var(--cor-texto-suave);
 }
 
@@ -121,6 +143,20 @@
     border-radius: var(--raio-card);
     padding: 20px;
     box-shadow: 0 1px 3px var(--cor-sombra);
+}
+
+.stat-icone{
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 12px;
 }
 
 .stat-label{
@@ -278,28 +314,39 @@
 }
 
 .abas{
-    display: flex;
-    gap: 8px;
-    padding: 12px 24px 0;
+    padding: 16px 24px 0;
     max-width: 1000px;
     margin: 0 auto;
-    flex-wrap: wrap;
 }
 
-.abas button{
-    background: transparent;
+.abas-pill{
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 6px;
+    background: var(--cor-fundo-elevado);
     border: 1px solid var(--cor-borda);
     border-radius: var(--raio-botao);
-    padding: 8px 16px;
+}
+
+.abas-pill button{
+    background: transparent;
+    border: none;
+    border-radius: var(--raio-botao);
+    padding: 8px 18px;
     font-size: 13px;
+    font-weight: 600;
     color: var(--cor-texto-suave);
     cursor: pointer;
     transition: .2s;
 }
 
-.abas button.aba-ativa{
+.abas-pill button:hover:not(.aba-ativa){
+    color: var(--cor-texto);
+}
+
+.abas-pill button.aba-ativa{
     background: var(--cor-primaria);
-    border-color: var(--cor-primaria);
     color: white;
 }
 

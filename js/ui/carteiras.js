@@ -159,8 +159,9 @@ function renderizarKpisCarteiras() {
     const container = document.getElementById("kpisCarteiras");
     if (!container) return;
 
-    container.innerHTML = APP.carteiras.map(c => `
+    container.innerHTML = APP.carteiras.map((c, indice) => `
         <div class="stat-tile">
+            ${statIconePessoa(c.usuarioNome, indice)}
             <div class="stat-label">Carteira de ${escaparHtml(c.usuarioNome)}</div>
             <div class="stat-valor">${formatarMoeda(c.saldo)}</div>
         </div>

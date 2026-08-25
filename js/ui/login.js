@@ -72,4 +72,7 @@ function mostrarAppAutenticado() {
 
     const rotulo = document.getElementById("usuarioLogado");
     if (rotulo) rotulo.textContent = APP.usuario.nome;
+
+    const avatar = document.getElementById("avatarUsuario");
+    if (avatar) avatar.textContent = (APP.usuario.nome || "?").trim().charAt(0).toUpperCase();
 }

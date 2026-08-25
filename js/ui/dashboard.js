@@ -328,25 +328,30 @@ function renderizarKpis(lista) {
 
     container.innerHTML = `
         <div class="stat-tile">
+            ${statIcone("💰", "verde")}
             <div class="stat-label">Total no período</div>
             <div class="stat-valor">${formatarMoeda(total)}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("🧾", "azul")}
             <div class="stat-label">Quantidade de gastos</div>
             <div class="stat-valor">${lista.length}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("🏷️", "laranja")}
             <div class="stat-label">Maior categoria</div>
             <div class="stat-valor">${categoriaTop ? categoriaTop[0] : "-"}</div>
             <div class="stat-sublinha">${categoriaTop ? formatarMoeda(categoriaTop[1]) : ""}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("🤝", "roxo")}
             <div class="stat-label">Gasto em conjunto</div>
             <div class="stat-valor">${formatarMoeda(totalCompartilhado)}</div>
             <div class="stat-sublinha">despesas marcadas como Ambos, valor cheio</div>
         </div>
-        ${[...porPessoa.entries()].map(([nome, valor]) => `
+        ${[...porPessoa.entries()].map(([nome, valor], indice) => `
             <div class="stat-tile">
+                ${statIconePessoa(nome, indice)}
                 <div class="stat-label">Total de ${escaparHtml(nome)}</div>
                 <div class="stat-valor">${formatarMoeda(valor)}</div>
             </div>

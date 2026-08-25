@@ -24,24 +24,29 @@ function renderizarResumo() {
 
     container.innerHTML = `
         <div class="stat-tile stat-tile-destaque">
+            ${statIcone("💰", "verde")}
             <div class="stat-label">Saldo total</div>
             <div class="stat-valor">${formatarMoeda(saldoTotal)}</div>
         </div>
-        ${APP.carteiras.map(c => `
+        ${APP.carteiras.map((c, indice) => `
             <div class="stat-tile">
+                ${statIconePessoa(c.usuarioNome, indice)}
                 <div class="stat-label">Saldo de ${escaparHtml(c.usuarioNome)}</div>
                 <div class="stat-valor">${formatarMoeda(c.saldo)}</div>
             </div>
         `).join("")}
         <div class="stat-tile">
+            ${statIcone("🧾", "azul")}
             <div class="stat-label">Gasto de ${rotuloMes(mesAtualChave)}</div>
             <div class="stat-valor">${formatarMoeda(gastoMes)}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("🔁", "laranja")}
             <div class="stat-label">Compromisso fixo mensal</div>
             <div class="stat-valor">${formatarMoeda(totalFixas)}</div>
         </div>
         <div class="stat-tile">
+            ${statIcone("📊", "roxo")}
             <div class="stat-label">Total investido</div>
             <div class="stat-valor">${formatarMoeda(totalInvestido)}</div>
         </div>

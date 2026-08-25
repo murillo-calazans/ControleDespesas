@@ -50,11 +50,13 @@ function renderizarKpisInvestimentos() {
 
     container.innerHTML = `
         <div class="stat-tile">
+            ${statIcone("📊", "verde")}
             <div class="stat-label">Total investido</div>
             <div class="stat-valor">${formatarMoeda(total)}</div>
         </div>
-        ${[...porPessoa.entries()].map(([nome, valor]) => `
+        ${[...porPessoa.entries()].map(([nome, valor], indice) => `
             <div class="stat-tile">
+                ${statIconePessoa(nome, indice)}
                 <div class="stat-label">Investido por ${escaparHtml(nome)}</div>
                 <div class="stat-valor">${formatarMoeda(valor)}</div>
             </div>
