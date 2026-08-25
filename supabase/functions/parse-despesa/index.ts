@@ -39,7 +39,7 @@ const CATEGORIAS = [
     "Alimentação", "Mercado", "Transporte", "Saúde", "Lazer",
     "Casa", "Educação", "Assinaturas", "Compras", "Outros",
 ];
-const FORMAS_PAGAMENTO = ["crédito", "débito", "pix", "dinheiro", "outro"];
+const FORMAS_PAGAMENTO = ["crédito", "débito", "pix", "dinheiro", "saque", "outro"];
 const CONFIANCAS = ["alta", "media", "baixa"];
 const TIPOS = ["despesa", "investimento", "nenhum"];
 
@@ -125,8 +125,8 @@ function encontrarCartao(
 }
 
 /** Reaproveita uma despesa_fixa existente do mesmo usuário/categoria/valor/
- *  descrição (evita duplicar o template a cada vez que a IA marca "fixo"
- *  pra um gasto recorrente que já foi registrado antes). */
+ *  descrição/compartilhada (evita duplicar o template a cada vez que a IA
+ *  marca "fixo" pra um gasto recorrente que já foi registrado antes). */
 async function resolverDespesaFixaId(
     // deno-lint-ignore no-explicit-any
     admin: any,
@@ -134,6 +134,7 @@ async function resolverDespesaFixaId(
     categoria: string,
     valor: number,
     descricao: string | null,
+    compartilhada: boolean,
 ): Promise<number | null> {
     const { data: candidatas } = await admin
         .from("despesas_fixas")
@@ -141,6 +142,7 @@ async function resolverDespesaFixaId(
         .eq("usuario_id", usuarioId)
         .eq("categoria", categoria)
         .eq("valor", valor)
+        .eq("compartilhada", compartilhada)
         .eq("ativa", true);
 
     const chave = (descricao ?? "").trim().toLowerCase();
@@ -193,18 +195,31 @@ Deno.serve(async (req: Request) => {
         ]);
 
         // "pessoaAlvo" vem do seletor Isabela/Murillo/Ambos no campo de
-        // texto — deixa qualquer um dos dois lançar em nome do outro (ou
-        // dividir 1/2 pra cada). Só aceita um id que exista mesmo em
-        // "usuarios" (nunca confia cegamente no que o cliente manda); sem
-        // seletor ou valor inválido, cai no comportamento de sempre (quem
-        // está logado).
+        // texto — deixa qualquer um dos dois lançar em nome do outro. Só
+        // aceita um id que exista mesmo em "usuarios" (nunca confia
+        // cegamente no que o cliente manda); sem seletor ou valor
+        // inválido, cai no comportamento de sempre (quem está logado).
         const idsValidos = (todosUsuarios ?? []).map((u: { id: string }) => u.id);
+
+        // Investimento "Ambos" ainda divide o valor entre todo mundo em
+        // "usuarios" (não tem noção de "compartilhada" na tabela de
+        // investimentos).
         const usuariosAlvo: string[] =
             pessoaAlvo === "ambos" && idsValidos.length > 0
                 ? idsValidos
                 : typeof pessoaAlvo === "string" && idsValidos.includes(pessoaAlvo)
                     ? [pessoaAlvo]
                     : [usuario.id];
+
+        // Despesa "Ambos" grava UMA linha só, com o valor cheio, marcada
+        // como compartilhada=true — usuario_id vira só "quem registrou"
+        // (a carteira de cada um é debitada pela metade via trigger no
+        // banco, ver database/schema-despesas-compartilhadas.sql).
+        const compartilhada = pessoaAlvo === "ambos";
+        const usuarioIdAlvo: string =
+            !compartilhada && typeof pessoaAlvo === "string" && idsValidos.includes(pessoaAlvo)
+                ? pessoaAlvo
+                : usuario.id;
 
         const dataAtualISO = new Date().toISOString().slice(0, 10);
         const prompt = montarPrompt(texto.trim(), dataAtualISO, (cartoesAtivos ?? []).map((c: { nome: string }) => c.nome));
@@ -306,29 +321,26 @@ Deno.serve(async (req: Request) => {
         const descricao = extraido.descricao ?? null;
         const cartaoId = encontrarCartao(extraido.cartao ?? null, formaPagamento, cartoesAtivos ?? []);
 
-        const valorPorPessoa = valor / usuariosAlvo.length;
-
         if (temParcelas) {
             const parcelaGrupoId = crypto.randomUUID();
             const linhas = [];
             for (let n = parcelaAtualBruta; n <= parcelaTotalBruta; n++) {
-                for (const uid of usuariosAlvo) {
-                    linhas.push({
-                        usuario_id: uid,
-                        valor: valorPorPessoa,
-                        categoria,
-                        forma_pagamento: formaPagamento,
-                        cartao_id: cartaoId,
-                        descricao,
-                        data_despesa: somarMeses(dataResultado, n - parcelaAtualBruta),
-                        mensagem_original: texto.trim(),
-                        confianca_ia: confianca,
-                        despesa_fixa_id: null,
-                        parcela_atual: n,
-                        parcela_total: parcelaTotalBruta,
-                        parcela_grupo_id: parcelaGrupoId,
-                    });
-                }
+                linhas.push({
+                    usuario_id: usuarioIdAlvo,
+                    valor,
+                    categoria,
+                    forma_pagamento: formaPagamento,
+                    cartao_id: cartaoId,
+                    descricao,
+                    data_despesa: somarMeses(dataResultado, n - parcelaAtualBruta),
+                    mensagem_original: texto.trim(),
+                    confianca_ia: confianca,
+                    despesa_fixa_id: null,
+                    parcela_atual: n,
+                    parcela_total: parcelaTotalBruta,
+                    parcela_grupo_id: parcelaGrupoId,
+                    compartilhada,
+                });
             }
 
             const { data: inseridas, error: erroInsercaoParcelas } = await admin
@@ -343,43 +355,38 @@ Deno.serve(async (req: Request) => {
 
             return jsonResponse({
                 ok: true, tipo: "despesa", registrado: true,
-                despesa: inseridas[0], parcelas: inseridas.filter(d => d.usuario_id === inseridas[0].usuario_id),
-                dividido: usuariosAlvo.length > 1, valorTotal: valor,
+                despesa: inseridas[0], parcelas: inseridas,
+                dividido: compartilhada, valorTotal: valor,
                 usuarioNome: usuario.nome, fixoRegistrado: false,
             }, 200);
         }
 
-        // Uma linha de despesa por pessoa em "usuariosAlvo" (normalmente
-        // só quem está logado; duas linhas — valor dividido ao meio — se
-        // o seletor no campo de texto estiver em "Ambos"). Despesa fixa
-        // também precisa de um template por pessoa, já que
-        // despesas_fixas.usuario_id não aceita null.
-        let algumFixoRegistrado = false;
-        const linhasDespesa = [];
-        for (const uid of usuariosAlvo) {
-            let despesaFixaId: number | null = null;
-            if (extraido.fixo === true) {
-                despesaFixaId = await resolverDespesaFixaId(admin, uid, categoria, valorPorPessoa, descricao);
-                if (despesaFixaId === null) {
-                    const diaLancamento = Number(dataResultado.slice(8, 10));
-                    const { data: novaFixa, error: erroFixa } = await admin
-                        .from("despesas_fixas")
-                        .insert({
-                            usuario_id: uid, valor: valorPorPessoa, categoria, forma_pagamento: formaPagamento,
-                            cartao_id: cartaoId, descricao, dia_lancamento: diaLancamento,
-                            mensagem_original: texto.trim(),
-                        })
-                        .select("id")
-                        .single();
-                    if (erroFixa) console.error("Erro ao criar despesa fixa (seguindo sem marcar):", erroFixa);
-                    else despesaFixaId = novaFixa.id;
-                }
-                if (despesaFixaId !== null) algumFixoRegistrado = true;
+        // Uma linha só, com o valor cheio — "Ambos" marca compartilhada=true
+        // em vez de duplicar a linha (ver database/schema-despesas-compartilhadas.sql).
+        let despesaFixaId: number | null = null;
+        if (extraido.fixo === true) {
+            despesaFixaId = await resolverDespesaFixaId(admin, usuarioIdAlvo, categoria, valor, descricao, compartilhada);
+            if (despesaFixaId === null) {
+                const diaLancamento = Number(dataResultado.slice(8, 10));
+                const { data: novaFixa, error: erroFixa } = await admin
+                    .from("despesas_fixas")
+                    .insert({
+                        usuario_id: usuarioIdAlvo, valor, categoria, forma_pagamento: formaPagamento,
+                        cartao_id: cartaoId, descricao, dia_lancamento: diaLancamento,
+                        mensagem_original: texto.trim(), compartilhada,
+                    })
+                    .select("id")
+                    .single();
+                if (erroFixa) console.error("Erro ao criar despesa fixa (seguindo sem marcar):", erroFixa);
+                else despesaFixaId = novaFixa.id;
             }
+        }
 
-            linhasDespesa.push({
-                usuario_id: uid,
-                valor: valorPorPessoa,
+        const { data: inserida, error: erroInsercao } = await admin
+            .from("despesas")
+            .insert({
+                usuario_id: usuarioIdAlvo,
+                valor,
                 categoria,
                 forma_pagamento: formaPagamento,
                 cartao_id: cartaoId,
@@ -388,13 +395,10 @@ Deno.serve(async (req: Request) => {
                 mensagem_original: texto.trim(),
                 confianca_ia: confianca,
                 despesa_fixa_id: despesaFixaId,
-            });
-        }
-
-        const { data: inseridas, error: erroInsercao } = await admin
-            .from("despesas")
-            .insert(linhasDespesa)
-            .select();
+                compartilhada,
+            })
+            .select()
+            .single();
 
         if (erroInsercao) {
             console.error("Erro ao gravar despesa:", erroInsercao);
@@ -402,9 +406,9 @@ Deno.serve(async (req: Request) => {
         }
 
         return jsonResponse({
-            ok: true, tipo: "despesa", registrado: true, despesa: inseridas[0],
-            dividido: usuariosAlvo.length > 1, valorTotal: valor,
-            usuarioNome: usuario.nome, fixoRegistrado: algumFixoRegistrado,
+            ok: true, tipo: "despesa", registrado: true, despesa: inserida,
+            dividido: compartilhada, valorTotal: valor,
+            usuarioNome: usuario.nome, fixoRegistrado: despesaFixaId !== null,
         }, 200);
 
     } catch (erro) {

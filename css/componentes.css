@@ -173,7 +173,8 @@
     font-variant-numeric: tabular-nums;
 }
 
-.select-pessoa-linha{
+.select-pessoa-linha,
+.select-forma-pagamento-linha{
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -184,7 +185,9 @@
 }
 
 .select-pessoa-linha:hover,
-.select-pessoa-linha:focus{
+.select-pessoa-linha:focus,
+.select-forma-pagamento-linha:hover,
+.select-forma-pagamento-linha:focus{
     border-color: var(--cor-borda);
     background: var(--cor-fundo-elevado);
 }

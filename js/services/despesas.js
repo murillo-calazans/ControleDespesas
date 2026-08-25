@@ -76,17 +76,39 @@ async function buscarDespesas() {
         parcelaGrupoId: linha.parcela_grupo_id,
         dataDespesa: linha.data_despesa,
         mensagemOriginal: linha.mensagem_original,
-        confiancaIA: linha.confianca_ia
+        confiancaIA: linha.confianca_ia,
+        compartilhada: linha.compartilhada
     }));
 }
 
-/** Reatribui uma despesa já existente pra outra pessoa (o trigger de
- *  saldo no banco já lida certo com a troca — estorna do dono antigo,
- *  debita do novo, exceto em crédito, que só debita quando a fatura é paga). */
+/** Reatribui a pessoa de uma despesa já existente: um usuário
+ *  específico, ou "ambos" pra marcar como compartilhada (uma linha só,
+ *  valor cheio — o trigger de saldo no banco debita metade de cada
+ *  carteira do casal, ver database/schema-despesas-compartilhadas.sql).
+ *  Trocar de "ambos" pra uma pessoa específica desmarca a divisão. */
 async function atualizarPessoaDespesa(id, usuarioId) {
-    const { error } = await supabaseClient.from("despesas").update({ usuario_id: usuarioId }).eq("id", id);
+    const campos = usuarioId === "ambos"
+        ? { compartilhada: true }
+        : { usuario_id: usuarioId, compartilhada: false };
+
+    const { error } = await supabaseClient.from("despesas").update(campos).eq("id", id);
     if (error) {
         console.error("Falha ao reatribuir despesa:", error);
+        return false;
+    }
+    return true;
+}
+
+/** Reatribui a forma de pagamento de uma despesa já existente — se for
+ *  num cartão de crédito, já define junto qual cartão (cartaoId),
+ *  numa atualização só. Define em qual fatura ela entra. */
+async function atualizarFormaPagamentoDespesa(id, formaPagamento, cartaoId) {
+    const { error } = await supabaseClient.from("despesas").update({
+        forma_pagamento: formaPagamento,
+        cartao_id: cartaoId || null
+    }).eq("id", id);
+    if (error) {
+        console.error("Falha ao reatribuir forma de pagamento da despesa:", error);
         return false;
     }
     return true;

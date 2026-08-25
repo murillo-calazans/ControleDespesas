@@ -10,6 +10,7 @@
 let cartaoSelecionadoId = null;
 let competenciaSelecionada = null; // "YYYY-MM"
 let pagamentosFaturaCache = [];
+let pessoaFaturaSelecionada = null; // null = "Total" (todo mundo); senão, usuarioId
 
 function registrarCartoes() {
     const form = document.getElementById("formNovoCartao");
@@ -78,6 +79,22 @@ function despesasDaFatura(cartao, competencia) {
     );
 }
 
+/** Mesma fatura, mas do ponto de vista de uma pessoa específica: só as
+ *  despesas dela (valor cheio) mais a METADE de cada despesa marcada
+ *  como "ambos" nessa fatura (a outra metade é da outra pessoa, mesmo
+ *  a compra estando lançada nesse cartão). Sem usuarioId (visão
+ *  "Total"), devolve a fatura inteira, valor cheio. Cada despesa vem
+ *  com "valorExibido" já calculado pra essa visão. */
+function despesasDaFaturaPorPessoa(cartao, competencia, usuarioId) {
+    const todas = despesasDaFatura(cartao, competencia);
+    if (!usuarioId) {
+        return todas.map(d => ({ ...d, valorExibido: d.valor }));
+    }
+    return todas
+        .filter(d => d.compartilhada || String(d.usuarioId) === String(usuarioId))
+        .map(d => ({ ...d, valorExibido: d.compartilhada ? d.valor / 2 : d.valor }));
+}
+
 /** Todas as competências ("YYYY-MM") com gasto nesse cartão — passadas
  *  e futuras (parcelas já agendadas aparecem aqui mesmo antes de a
  *  fatura fechar) — mais a competência atual, mesmo sem gasto ainda. */
@@ -99,6 +116,7 @@ async function selecionarCartao(cartaoId) {
 
     const hojeISO = new Date().toISOString().slice(0, 10);
     competenciaSelecionada = competenciaFatura(hojeISO, cartao.diaFechamento);
+    pessoaFaturaSelecionada = APP.usuario.id;
 
     pagamentosFaturaCache = await buscarFaturaPagamentos(cartaoId);
     renderizarDetalheFatura();
@@ -212,10 +230,21 @@ function renderizarDetalheFatura() {
         return;
     }
 
-    const lista = despesasDaFatura(cartao, competenciaSelecionada);
-    const total = lista.reduce((soma, d) => soma + d.valor, 0);
+    const listaTotal = despesasDaFatura(cartao, competenciaSelecionada);
+    const totalFatura = listaTotal.reduce((soma, d) => soma + d.valor, 0);
+    const lista = despesasDaFaturaPorPessoa(cartao, competenciaSelecionada, pessoaFaturaSelecionada);
+    const totalExibido = lista.reduce((soma, d) => soma + d.valorExibido, 0);
     const jaPaga = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === competenciaSelecionada);
     const competencias = competenciasDoCartao(cartao);
+
+    // Um botão por pessoa (as duas do casal) — cada um já mostra o
+    // valor daquela visão nessa fatura: despesas dela (valor cheio) +
+    // metade das compartilhadas ("ambos" divide entre as duas).
+    const opcoesPessoa = APP.carteiras.map(c => ({
+        id: c.usuarioId,
+        nome: c.usuarioNome,
+        valor: despesasDaFaturaPorPessoa(cartao, competenciaSelecionada, c.usuarioId).reduce((soma, d) => soma + d.valorExibido, 0)
+    }));
 
     container.innerHTML = `
         <div class="cartao">
@@ -237,11 +266,23 @@ function renderizarDetalheFatura() {
                     `;
                 }).join("")}
             </div>
+            <div class="tira-competencias">
+                ${opcoesPessoa.map(op => `
+                    <button type="button" class="pill-competencia${op.id === pessoaFaturaSelecionada ? " pill-competencia-ativa" : ""}" data-pessoa-fatura="${op.id}">
+                        <span class="pill-competencia-mes">${escaparHtml(op.nome)}</span>
+                        <span class="pill-competencia-valor">${formatarMoeda(op.valor)}</span>
+                    </button>
+                `).join("")}
+            </div>
             <div class="kpi-grid">
                 <div class="stat-tile">
                     <div class="stat-label">Total da fatura</div>
-                    <div class="stat-valor">${formatarMoeda(total)}</div>
+                    <div class="stat-valor">${formatarMoeda(totalFatura)}</div>
                     <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"}</div>
+                </div>
+                <div class="stat-tile">
+                    <div class="stat-label">Fatura de ${escaparHtml(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "")}</div>
+                    <div class="stat-valor">${formatarMoeda(totalExibido)}</div>
                 </div>
             </div>
             ${lista.length === 0
@@ -252,15 +293,15 @@ function renderizarDetalheFatura() {
                         ${lista.map(d => `
                             <tr>
                                 <td>${formatarDataBR(d.dataDespesa)}</td>
-                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
+                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}</td>
                                 <td>${escaparHtml(d.categoria)}</td>
-                                <td class="valor-cell">${formatarMoeda(d.valor)}</td>
+                                <td class="valor-cell">${formatarMoeda(d.valorExibido)}</td>
                             </tr>
                         `).join("")}
                     </tbody>
                    </table>`
             }
-            ${!jaPaga && total > 0 ? '<button type="button" id="btnMarcarFaturaPaga" class="botao-primario">Marcar fatura como paga</button>' : ""}
+            ${!jaPaga && totalFatura > 0 ? '<button type="button" id="btnMarcarFaturaPaga" class="botao-primario">Marcar fatura como paga</button>' : ""}
         </div>
     `;
 
@@ -274,6 +315,13 @@ function renderizarDetalheFatura() {
     container.querySelectorAll("[data-competencia]").forEach(pill => {
         pill.addEventListener("click", () => {
             competenciaSelecionada = pill.dataset.competencia;
+            renderizarDetalheFatura();
+        });
+    });
+
+    container.querySelectorAll("[data-pessoa-fatura]").forEach(pill => {
+        pill.addEventListener("click", () => {
+            pessoaFaturaSelecionada = pill.dataset.pessoaFatura || null;
             renderizarDetalheFatura();
         });
     });

@@ -32,7 +32,8 @@ async function buscarDespesasFixas() {
         cartaoNome: linha.cartoes?.nome ?? null,
         descricao: linha.descricao,
         diaLancamento: linha.dia_lancamento,
-        ativa: linha.ativa
+        ativa: linha.ativa,
+        compartilhada: linha.compartilhada
     }));
 }
 

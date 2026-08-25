@@ -150,10 +150,11 @@ function popularFiltros() {
         filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
             meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
 
-        const pessoas = new Map();
-        for (const d of APP.despesas) pessoas.set(d.usuarioId, d.usuarioNome);
+        // Parte de APP.carteiras (1:1 com usuarios) em vez de APP.despesas,
+        // senão uma pessoa que nunca registrou nada no próprio nome (só em
+        // despesas compartilhadas ou lançadas pelo parceiro) não apareceria.
         filtroPessoa.innerHTML = '<option value="">Todos</option>' +
-            [...pessoas.entries()].map(([id, nome]) => `<option value="${id}">${escaparHtml(nome)}</option>`).join("");
+            APP.carteiras.map(c => `<option value="${c.usuarioId}">${escaparHtml(c.usuarioNome)}</option>`).join("");
 
         filtroCategoria.innerHTML = '<option value="">Todas as categorias</option>' +
             CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join("");
@@ -178,10 +179,23 @@ function rotuloMes(chaveMes) {
 function aplicarFiltros() {
     return APP.despesas.filter(d => {
         if (APP.filtros.mes && d.dataDespesa.slice(0, 7) !== APP.filtros.mes) return false;
-        if (APP.filtros.usuarioId && String(d.usuarioId) !== String(APP.filtros.usuarioId)) return false;
+        if (APP.filtros.usuarioId) {
+            // Despesa compartilhada entra no filtro de qualquer uma das
+            // duas pessoas (é metade de cada um), não só de quem registrou.
+            const pertenceAoFiltro = String(d.usuarioId) === String(APP.filtros.usuarioId) || d.compartilhada;
+            if (!pertenceAoFiltro) return false;
+        }
         if (APP.filtros.categoria && d.categoria !== APP.filtros.categoria) return false;
         return true;
     });
+}
+
+/** Valor "de fato" de uma despesa no contexto do filtro de pessoa atual:
+ *  metade, se for compartilhada e o filtro estiver numa pessoa específica
+ *  (a outra metade é da outra pessoa); valor cheio nos demais casos
+ *  (inclusive compartilhada sem filtro de pessoa — "Todos"). */
+function valorEfetivo(despesa) {
+    return APP.filtros.usuarioId && despesa.compartilhada ? despesa.valor / 2 : despesa.valor;
 }
 
 function renderizarDashboard() {
@@ -194,14 +208,25 @@ function renderizarKpis(lista) {
     const container = document.getElementById("kpisDespesas");
     if (!container) return;
 
-    const total = lista.reduce((soma, d) => soma + d.valor, 0);
+    const total = lista.reduce((soma, d) => soma + valorEfetivo(d), 0);
 
     const porCategoria = new Map();
-    for (const d of lista) porCategoria.set(d.categoria, (porCategoria.get(d.categoria) ?? 0) + d.valor);
+    for (const d of lista) porCategoria.set(d.categoria, (porCategoria.get(d.categoria) ?? 0) + valorEfetivo(d));
     const categoriaTop = [...porCategoria.entries()].sort((a, b) => b[1] - a[1])[0];
 
+    // Com filtro de pessoa ativo, a lista já é só dela (dela sozinha +
+    // metade das compartilhadas) — um tile só, no nome dela. Sem filtro
+    // ("Todos"), um tile por pessoa (só as individuais) mais um pra
+    // "Ambos" (as compartilhadas, valor cheio).
+    const nomeFiltro = APP.filtros.usuarioId
+        ? APP.carteiras.find(c => String(c.usuarioId) === String(APP.filtros.usuarioId))?.usuarioNome
+        : null;
+
     const porPessoa = new Map();
-    for (const d of lista) porPessoa.set(d.usuarioNome, (porPessoa.get(d.usuarioNome) ?? 0) + d.valor);
+    for (const d of lista) {
+        const nome = nomeFiltro ?? (d.compartilhada ? "Ambos" : d.usuarioNome);
+        porPessoa.set(nome, (porPessoa.get(nome) ?? 0) + valorEfetivo(d));
+    }
 
     container.innerHTML = `
         <div class="stat-tile">
@@ -226,6 +251,27 @@ function renderizarKpis(lista) {
     `;
 }
 
+/** Chave que identifica a forma de pagamento no seletor da tabela:
+ *  crédito ganha uma opção por cartão ("credito:<id>"); as demais usam
+ *  o próprio valor de forma_pagamento. */
+function chaveFormaPagamento(d) {
+    return d.formaPagamento === "crédito" && d.cartaoId ? `credito:${d.cartaoId}` : d.formaPagamento;
+}
+
+/** Opções do seletor de forma de pagamento — cartão de crédito não é
+ *  mais uma coluna separada, é uma opção por cartão cadastrado aqui
+ *  mesmo (ex.: "Nubank - Crédito"), pra já saber em qual fatura entra. */
+function opcoesFormaPagamento() {
+    return [
+        { valor: "dinheiro", rotulo: "Dinheiro" },
+        { valor: "débito", rotulo: "Débito" },
+        { valor: "pix", rotulo: "PIX" },
+        ...APP.cartoes.map(c => ({ valor: `credito:${c.id}`, rotulo: `${c.nome} - Crédito` })),
+        { valor: "saque", rotulo: "Saque" },
+        { valor: "outro", rotulo: "Outro" }
+    ];
+}
+
 function renderizarTabela(lista) {
     const container = document.getElementById("listaDespesas");
     if (!container) return;
@@ -234,6 +280,8 @@ function renderizarTabela(lista) {
         container.innerHTML = '<p class="alerta-vazio">Nenhuma despesa encontrada.</p>';
         return;
     }
+
+    const opcoesPagamento = opcoesFormaPagamento();
 
     container.innerHTML = `
         <table class="tabela-despesas">
@@ -249,21 +297,33 @@ function renderizarTabela(lista) {
                 </tr>
             </thead>
             <tbody>
-                ${lista.map(d => `
+                ${lista.map(d => {
+                    const chaveAtual = chaveFormaPagamento(d);
+                    const opcaoFaltando = opcoesPagamento.some(op => op.valor === chaveAtual)
+                        ? ""
+                        : `<option value="${escaparHtml(chaveAtual)}" selected>${escaparHtml(d.formaPagamento)}</option>`;
+                    return `
                     <tr>
                         <td>${formatarDataBR(d.dataDespesa)}</td>
                         <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
                         <td>${escaparHtml(d.categoria)}</td>
-                        <td>${escaparHtml(d.formaPagamento)}</td>
                         <td>
-                            <select class="select-pessoa-linha" data-id-despesa="${d.id}">
-                                ${APP.carteiras.map(c => `<option value="${c.usuarioId}"${String(c.usuarioId) === String(d.usuarioId) ? " selected" : ""}>${escaparHtml(c.usuarioNome)}</option>`).join("")}
+                            <select class="select-forma-pagamento-linha" data-id-despesa="${d.id}">
+                                ${opcoesPagamento.map(op => `<option value="${op.valor}"${op.valor === chaveAtual ? " selected" : ""}>${escaparHtml(op.rotulo)}</option>`).join("")}
+                                ${opcaoFaltando}
                             </select>
                         </td>
-                        <td class="valor-cell">${formatarMoeda(d.valor)}</td>
+                        <td>
+                            <select class="select-pessoa-linha" data-id-despesa="${d.id}">
+                                ${APP.carteiras.map(c => `<option value="${c.usuarioId}"${!d.compartilhada && String(c.usuarioId) === String(d.usuarioId) ? " selected" : ""}>${escaparHtml(c.usuarioNome)}</option>`).join("")}
+                                <option value="ambos"${d.compartilhada ? " selected" : ""}>Ambos (dividir)</option>
+                            </select>
+                        </td>
+                        <td class="valor-cell">${formatarMoeda(valorEfetivo(d))}</td>
                         <td><button type="button" class="botao-excluir" data-id="${d.id}" title="Excluir">&times;</button></td>
                     </tr>
-                `).join("")}
+                `;
+                }).join("")}
             </tbody>
         </table>
     `;
@@ -275,6 +335,26 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".select-pessoa-linha").forEach(select => {
         select.addEventListener("change", () => aoAlterarPessoaDespesa(select.dataset.idDespesa, select.value));
     });
+
+    container.querySelectorAll(".select-forma-pagamento-linha").forEach(select => {
+        select.addEventListener("change", () => aoAlterarFormaPagamentoDespesa(select.dataset.idDespesa, select.value));
+    });
+}
+
+async function aoAlterarFormaPagamentoDespesa(id, chave) {
+    const [formaPagamento, cartaoId] = chave.startsWith("credito:")
+        ? ["crédito", chave.slice("credito:".length)]
+        : [chave, null];
+
+    const ok = await atualizarFormaPagamentoDespesa(id, formaPagamento, cartaoId);
+    if (!ok) {
+        alert("Não foi possível reatribuir a forma de pagamento da despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    renderizarDashboard();
+    renderizarCartoes();
 }
 
 async function aoAlterarPessoaDespesa(id, usuarioId) {
