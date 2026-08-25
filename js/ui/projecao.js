@@ -38,7 +38,7 @@ function projetarSaldo(qtdMeses) {
         const chave = d.toISOString().slice(0, 7);
 
         const gastosReais = APP.despesas
-            .filter(x => x.dataDespesa.slice(0, 7) === chave)
+            .filter(x => mesEfetivoDespesa(x) === chave)
             .reduce((soma, x) => soma + x.valor, 0);
 
         const estimativaFixas = APP.despesasFixas

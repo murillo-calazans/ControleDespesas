@@ -115,13 +115,14 @@ function mostrarResultadoRegistro(texto, tipo) {
 /** Roda depois de login — busca tudo de uma vez (despesas, carteiras,
  *  cartões, investimentos, despesas fixas) e renderiza cada aba. */
 async function inicializarDadosAutenticado() {
-    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas, salarios] = await Promise.all([
+    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas, despesasFixasPuladas, salarios] = await Promise.all([
         buscarDespesas(),
         buscarCarteiras(),
         buscarMovimentos(),
         buscarCartoes(),
         buscarInvestimentos(),
         buscarDespesasFixas(),
+        buscarDespesasFixasPuladas(),
         buscarSalarios()
     ]);
 
@@ -131,6 +132,7 @@ async function inicializarDadosAutenticado() {
     APP.cartoes = cartoes;
     APP.investimentos = investimentos;
     APP.despesasFixas = despesasFixas;
+    APP.despesasFixasPuladas = despesasFixasPuladas;
     APP.salarios = salarios;
 
     popularFiltros();
@@ -154,7 +156,7 @@ function popularFiltros() {
         // ver a projeção das despesas fixas neles (ver
         // despesasFixasVirtuaisParaMes).
         const mesAtual = new Date().toISOString().slice(0, 7);
-        const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.despesas.map(d => d.dataDespesa.slice(0, 7))])].sort().reverse();
+        const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.despesas.map(mesEfetivoDespesa)])].sort().reverse();
         filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
             meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
 
@@ -182,6 +184,18 @@ function popularFiltros() {
             APP.carteiras.map(c => `<option value="${c.usuarioId}">${escaparHtml(c.usuarioNome)}</option>`).join("") +
             '<option value="ambos">Ambos (dividir)</option>';
     }
+}
+
+/** Mês "de fato" de uma despesa pro agrupamento do relatório: se foi
+ *  no crédito, respeita o fechamento do cartão — uma compra feita
+ *  depois do dia de fechamento cai na fatura do mês seguinte, igual
+ *  no extrato real (mesma regra de competenciaFatura em js/ui/cartoes.js).
+ *  Sem cartão (ou cartão não encontrado), usa a data mesmo. */
+function mesEfetivoDespesa(despesa) {
+    if (!despesa.cartaoId) return despesa.dataDespesa.slice(0, 7);
+    const cartao = APP.cartoes.find(c => String(c.id) === String(despesa.cartaoId));
+    if (!cartao) return despesa.dataDespesa.slice(0, 7);
+    return competenciaFatura(despesa.dataDespesa, cartao.diaFechamento);
 }
 
 function rotuloMes(chaveMes) {
@@ -213,7 +227,7 @@ function correspondeFiltroPessoaCategoria(d) {
 
 function aplicarFiltros() {
     return APP.despesas.filter(d => {
-        if (APP.filtros.mes && d.dataDespesa.slice(0, 7) !== APP.filtros.mes) return false;
+        if (APP.filtros.mes && mesEfetivoDespesa(d) !== APP.filtros.mes) return false;
         return correspondeFiltroPessoaCategoria(d);
     });
 }
@@ -239,9 +253,10 @@ function quintoDiaUtilISO(mesChave) {
 
 /** Despesas fixas ativas que ainda não têm lançamento real em
  *  "mesChave" (o cron só cria no 5º dia útil daquele mês — ver
- *  database/schema-fixas-quinto-dia-util.sql) — devolve uma "despesa"
+ *  database/schema-fixas-quinto-dia-util.sql), e que não foram
+ *  puladas nesse mês (ver pularDespesaFixa) — devolve uma "despesa"
  *  projetada pra cada uma, só pra exibição (nunca gravada, não pode
- *  ser editada/excluída). Assim o mês aparece completo no relatório
+ *  ser editada, só pulada). Assim o mês aparece completo no relatório
  *  mesmo antes do lançamento automático acontecer. */
 function despesasFixasVirtuaisParaMes(mesChave) {
     if (!mesChave) return [];
@@ -249,7 +264,8 @@ function despesasFixasVirtuaisParaMes(mesChave) {
     return APP.despesasFixas
         .filter(f => f.ativa
             && f.criadoEm.slice(0, 7) <= mesChave
-            && !APP.despesas.some(d => d.despesaFixaId === f.id && d.dataDespesa.slice(0, 7) === mesChave))
+            && !APP.despesas.some(d => d.despesaFixaId === f.id && d.dataDespesa.slice(0, 7) === mesChave)
+            && !APP.despesasFixasPuladas.some(p => p.despesaFixaId === f.id && p.mes === mesChave))
         .map(f => ({
             id: `fixa-${f.id}-${mesChave}`,
             usuarioId: f.usuarioId,
@@ -264,6 +280,7 @@ function despesasFixasVirtuaisParaMes(mesChave) {
             parcelaTotal: null,
             parcelaGrupoId: null,
             dataDespesa: quintoDiaUtilISO(mesChave),
+            mesChave,
             mensagemOriginal: f.descricao || "Despesa fixa ainda não lançada",
             confiancaIA: null,
             compartilhada: f.compartilhada,
@@ -415,7 +432,7 @@ function renderizarTabela(lista) {
                             <td>${escaparHtml(opcoesPagamento.find(op => op.valor === chaveFormaPagamento(d))?.rotulo ?? d.formaPagamento)}</td>
                             <td>${escaparHtml(d.compartilhada ? "Ambos (dividir)" : d.usuarioNome)}</td>
                             <td class="valor-cell">${formatarMoeda(valorEfetivo(d))}</td>
-                            <td></td>
+                            <td><button type="button" class="botao-excluir" data-pular-fixa="${d.despesaFixaId}" data-mes-fixa="${d.mesChave}" title="Pular esse mês (imprevisto)">&times;</button></td>
                         </tr>
                     `;
                     }
@@ -456,8 +473,12 @@ function renderizarTabela(lista) {
         </table>
     `;
 
-    container.querySelectorAll(".botao-excluir").forEach(botao => {
+    container.querySelectorAll(".botao-excluir[data-id]").forEach(botao => {
         botao.addEventListener("click", () => aoExcluirDespesa(botao.dataset.id));
+    });
+
+    container.querySelectorAll("[data-pular-fixa]").forEach(botao => {
+        botao.addEventListener("click", () => aoPularDespesaFixa(botao.dataset.pularFixa, botao.dataset.mesFixa));
     });
 
     container.querySelectorAll(".select-pessoa-linha").forEach(select => {
@@ -475,6 +496,19 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".input-data-linha").forEach(input => {
         input.addEventListener("change", () => aoAlterarDataDespesa(input.dataset.idDespesa, input.value));
     });
+}
+
+async function aoPularDespesaFixa(despesaFixaId, mesChave) {
+    if (!confirm(`Pular essa despesa fixa só em ${rotuloMes(mesChave)}? Ela volta a lançar normalmente no mês seguinte.`)) return;
+
+    const ok = await pularDespesaFixa(despesaFixaId, mesChave);
+    if (!ok) {
+        alert("Não foi possível pular a despesa fixa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesasFixasPuladas = await buscarDespesasFixasPuladas();
+    renderizarDashboard();
 }
 
 async function aoAlterarDataDespesa(id, dataISO) {

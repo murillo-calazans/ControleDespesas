@@ -55,3 +55,34 @@ async function excluirDespesaFixa(id) {
     }
     return true;
 }
+
+/** Meses ("YYYY-MM") em que uma despesa fixa foi marcada pra pular —
+ *  ver pularDespesaFixa. */
+async function buscarDespesasFixasPuladas() {
+    const { data, error } = await supabaseClient.from("despesas_fixas_puladas").select("*");
+    if (error) {
+        console.error("Falha ao buscar despesas fixas puladas:", error);
+        return [];
+    }
+
+    return data.map(linha => ({
+        id: linha.id,
+        despesaFixaId: linha.despesa_fixa_id,
+        mes: linha.mes.slice(0, 7)
+    }));
+}
+
+/** Pula uma despesa fixa só nesse mês (imprevisto) — não lança
+ *  automaticamente nem aparece como "prevista" nele, mas o molde
+ *  continua ativo e volta ao normal no mês seguinte. */
+async function pularDespesaFixa(despesaFixaId, mesChave) {
+    const { error } = await supabaseClient.from("despesas_fixas_puladas").insert({
+        despesa_fixa_id: despesaFixaId,
+        mes: `${mesChave}-01`
+    });
+    if (error) {
+        console.error("Falha ao pular despesa fixa:", error);
+        return false;
+    }
+    return true;
+}

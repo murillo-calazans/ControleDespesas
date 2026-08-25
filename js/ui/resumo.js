@@ -16,7 +16,7 @@ function renderizarResumo() {
 
     const mesAtualChave = new Date().toISOString().slice(0, 7);
     const gastoMes = APP.despesas
-        .filter(d => d.dataDespesa.slice(0, 7) === mesAtualChave)
+        .filter(d => mesEfetivoDespesa(d) === mesAtualChave)
         .reduce((soma, d) => soma + d.valor, 0);
 
     const totalFixas = APP.despesasFixas.filter(f => f.ativa).reduce((soma, f) => soma + f.valor, 0);
