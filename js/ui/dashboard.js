@@ -146,9 +146,18 @@ function popularFiltros() {
     const inputPessoaDespesa = document.getElementById("inputPessoaDespesa");
 
     if (filtroMes && filtroPessoa && filtroCategoria) {
-        const meses = [...new Set(APP.despesas.map(d => d.dataDespesa.slice(0, 7)))].sort().reverse();
+        // Sempre inclui o mês atual na lista, mesmo sem nenhuma despesa
+        // lançada nele ainda, senão não daria pra selecioná-lo como padrão.
+        const mesAtual = new Date().toISOString().slice(0, 7);
+        const meses = [...new Set([mesAtual, ...APP.despesas.map(d => d.dataDespesa.slice(0, 7))])].sort().reverse();
         filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
             meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
+
+        // Abre por padrão no mês atual, em vez de "Todos os meses" — o
+        // usuário sempre quer ver o mês corrente ao abrir o site, não a
+        // lista inteira desde o começo.
+        filtroMes.value = mesAtual;
+        APP.filtros.mes = mesAtual;
 
         // Parte de APP.carteiras (1:1 com usuarios) em vez de APP.despesas,
         // senão uma pessoa que nunca registrou nada no próprio nome (só em
