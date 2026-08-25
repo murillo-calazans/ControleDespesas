@@ -115,13 +115,14 @@ function mostrarResultadoRegistro(texto, tipo) {
 /** Roda depois de login — busca tudo de uma vez (despesas, carteiras,
  *  cartões, investimentos, despesas fixas) e renderiza cada aba. */
 async function inicializarDadosAutenticado() {
-    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas] = await Promise.all([
+    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas, salarios] = await Promise.all([
         buscarDespesas(),
         buscarCarteiras(),
         buscarMovimentos(),
         buscarCartoes(),
         buscarInvestimentos(),
-        buscarDespesasFixas()
+        buscarDespesasFixas(),
+        buscarSalarios()
     ]);
 
     APP.despesas = despesas;
@@ -130,6 +131,7 @@ async function inicializarDadosAutenticado() {
     APP.cartoes = cartoes;
     APP.investimentos = investimentos;
     APP.despesasFixas = despesasFixas;
+    APP.salarios = salarios;
 
     popularFiltros();
     renderizarDashboard();

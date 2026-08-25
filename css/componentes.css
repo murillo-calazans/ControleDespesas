@@ -212,6 +212,36 @@
     font-variant-numeric: tabular-nums;
 }
 
+.botao-pequeno{
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.linha-salario{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+}
+
+.linha-salario + .linha-salario{
+    border-top: 1px solid var(--cor-borda);
+}
+
+.linha-salario-nome{
+    font-weight: 600;
+    min-width: 90px;
+}
+
+.input-salario-valor{
+    background: var(--cor-fundo-elevado);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 140px;
+}
+
 .botao-excluir{
     width: 26px;
     height: 26px;

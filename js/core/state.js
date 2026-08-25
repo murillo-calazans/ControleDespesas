@@ -33,6 +33,7 @@ const APP = {
     cartoes: [],
     investimentos: [],
     despesasFixas: [],
+    salarios: [],
 
     // Aba visível no momento ("resumo" | "despesas" | "carteiras" | "cartoes" | "fixas" | "investimentos").
     abaAtiva: "resumo",
