@@ -85,13 +85,22 @@ async function buscarDespesas() {
  *  específico, ou "ambos" pra marcar como compartilhada (uma linha só,
  *  valor cheio — o trigger de saldo no banco debita metade de cada
  *  carteira do casal, ver database/schema-despesas-compartilhadas.sql).
- *  Trocar de "ambos" pra uma pessoa específica desmarca a divisão. */
-async function atualizarPessoaDespesa(id, usuarioId) {
+ *  Trocar de "ambos" pra uma pessoa específica desmarca a divisão.
+ *
+ *  Se a despesa for parcelada (tem parcelaGrupoId), aplica em TODAS as
+ *  parcelas da mesma compra — senão só o mês editado mudava de dono,
+ *  e as outras parcelas ficavam com a divisão antiga, misturando o
+ *  cálculo da fatura entre os meses. */
+async function atualizarPessoaDespesa(despesa, usuarioId) {
     const campos = usuarioId === "ambos"
         ? { compartilhada: true }
         : { usuario_id: usuarioId, compartilhada: false };
 
-    const { error } = await supabaseClient.from("despesas").update(campos).eq("id", id);
+    const query = supabaseClient.from("despesas").update(campos);
+    const { error } = despesa.parcelaGrupoId
+        ? await query.eq("parcela_grupo_id", despesa.parcelaGrupoId)
+        : await query.eq("id", despesa.id);
+
     if (error) {
         console.error("Falha ao reatribuir despesa:", error);
         return false;

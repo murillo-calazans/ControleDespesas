@@ -301,16 +301,22 @@ function renderizarKpis(lista) {
 
     // Com filtro de pessoa ativo, a lista já é só dela (dela sozinha +
     // metade das compartilhadas) — um tile só, no nome dela. Sem filtro
-    // ("Todos"), um tile por pessoa (só as individuais) mais um pra
-    // "Ambos" (as compartilhadas, valor cheio).
-    const nomeFiltro = APP.filtros.usuarioId
-        ? APP.carteiras.find(c => String(c.usuarioId) === String(APP.filtros.usuarioId))?.usuarioNome
-        : null;
-
+    // ("Todos"), um tile por pessoa, cada um já somando a própria metade
+    // de toda despesa "Ambos" — mesma conta de quando filtra por ela,
+    // só que pras duas ao mesmo tempo (nunca um bucket "Ambos" à parte,
+    // senão o valor dela some do total de ninguém).
     const porPessoa = new Map();
-    for (const d of lista) {
-        const nome = nomeFiltro ?? (d.compartilhada ? "Ambos" : d.usuarioNome);
-        porPessoa.set(nome, (porPessoa.get(nome) ?? 0) + valorEfetivo(d));
+    if (APP.filtros.usuarioId) {
+        const nomeFiltro = APP.carteiras.find(c => String(c.usuarioId) === String(APP.filtros.usuarioId))?.usuarioNome ?? "-";
+        porPessoa.set(nomeFiltro, total);
+    } else {
+        for (const c of APP.carteiras) {
+            const totalPessoa = lista.reduce((soma, d) => {
+                if (d.compartilhada) return soma + d.valor / 2;
+                return String(d.usuarioId) === String(c.usuarioId) ? soma + d.valor : soma;
+            }, 0);
+            porPessoa.set(c.usuarioNome, totalPessoa);
+        }
     }
 
     container.innerHTML = `
@@ -476,7 +482,10 @@ async function aoAlterarFormaPagamentoDespesa(id, chave) {
 }
 
 async function aoAlterarPessoaDespesa(id, usuarioId) {
-    const ok = await atualizarPessoaDespesa(id, usuarioId);
+    const despesa = APP.despesas.find(d => String(d.id) === String(id));
+    if (!despesa) return;
+
+    const ok = await atualizarPessoaDespesa(despesa, usuarioId);
     if (!ok) {
         alert("Não foi possível reatribuir a despesa. Veja o console pra detalhes.");
         return;
