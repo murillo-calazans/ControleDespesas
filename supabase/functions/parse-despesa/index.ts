@@ -188,7 +188,7 @@ Deno.serve(async (req: Request) => {
             return jsonResponse({ error: "Usuário não cadastrado em 'usuarios'." }, 403);
         }
 
-        const { texto, pessoaAlvo } = await req.json();
+        const { texto, pessoaAlvo, formaPagamentoAlvo, cartaoAlvo } = await req.json();
         if (!texto || typeof texto !== "string" || !texto.trim()) {
             return jsonResponse({ error: "texto é obrigatório." }, 400);
         }
@@ -319,11 +319,27 @@ Deno.serve(async (req: Request) => {
         const temParcelas = Number.isInteger(parcelaAtualBruta) && Number.isInteger(parcelaTotalBruta)
             && parcelaAtualBruta >= 1 && parcelaTotalBruta >= parcelaAtualBruta && parcelaTotalBruta <= 60;
 
-        const formaPagamento = FORMAS_PAGAMENTO.includes(extraido.forma_pagamento)
-            ? extraido.forma_pagamento
-            : (temParcelas ? "crédito" : "outro");
+        // "formaPagamentoAlvo" vem do seletor no campo de texto (ao lado
+        // de "quem gastou") — se vier preenchido, tem prioridade sobre o
+        // que a IA extraiu da mensagem (o campo agora é só descrição +
+        // valor; forma de pagamento é escolhida do lado, não digitada).
+        // Sem seletor (ou valor inválido), cai no comportamento antigo:
+        // a IA tenta extrair da mensagem.
+        const formaPagamento = FORMAS_PAGAMENTO.includes(formaPagamentoAlvo)
+            ? formaPagamentoAlvo
+            : FORMAS_PAGAMENTO.includes(extraido.forma_pagamento)
+                ? extraido.forma_pagamento
+                : (temParcelas ? "crédito" : "outro");
         const descricao = extraido.descricao ?? null;
-        const cartaoId = encontrarCartao(extraido.cartao ?? null, formaPagamento, cartoesAtivos ?? []);
+
+        // Mesma prioridade pro cartão: "cartaoAlvo" do seletor (validado
+        // contra os cartões ativos de verdade, nunca confia cegamente no
+        // client) tem prioridade sobre o nome de cartão que a IA tentou
+        // casar no texto.
+        const cartaoIdValidado = (cartoesAtivos ?? []).find((c: { id: number }) => String(c.id) === String(cartaoAlvo))?.id ?? null;
+        const cartaoId = formaPagamento === "crédito" && cartaoIdValidado !== null
+            ? cartaoIdValidado
+            : encontrarCartao(extraido.cartao ?? null, formaPagamento, cartoesAtivos ?? []);
 
         if (temParcelas) {
             const parcelaGrupoId = crypto.randomUUID();

@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Controle de Despesas</title>
-    <link rel="stylesheet" href="css/style.css?v=202608261018">
-    <link rel="stylesheet" href="css/componentes.css?v=202608261018">
+    <link rel="stylesheet" href="css/style.css?v=202608261111">
+    <link rel="stylesheet" href="css/componentes.css?v=202608261111">
 </head>
 <body class="nao-autenticado">
 
@@ -72,12 +72,13 @@
 
             <section class="cartao">
                 <h2>Novo gasto ou investimento</h2>
-                <p class="descricao-campo">Escreva como você falaria: "Gastei 10 reais na padaria no crédito cartão nubank", "Aluguel 1500 fixo" ou "Investi 500 na XP".</p>
+                <p class="descricao-campo">Escreva só a descrição e o valor — a categoria a IA descobre sozinha. Ex.: "Padaria 10", "Aluguel 1500 fixo", "Sofá 3000 em 6x" ou "Investi 500 na XP".</p>
                 <form id="formNovaDespesa" class="form-nova-despesa">
                     <div class="campo-com-icone">
                         <span class="campo-icone">✨</span>
-                        <input type="text" id="inputTextoDespesa" placeholder="Gastei 10 reais na padaria no crédito..." autocomplete="off" required>
+                        <input type="text" id="inputTextoDespesa" placeholder="Descrição e valor, ex: Padaria 10" autocomplete="off" required>
                     </div>
+                    <select id="inputFormaPagamentoDespesa" title="Forma de pagamento"></select>
                     <select id="inputPessoaDespesa" title="Quem gastou"></select>
                     <button type="submit" id="btnRegistrarDespesa" class="botao-primario">+ Registrar</button>
                 </form>
@@ -149,6 +150,7 @@
 
             <section class="cartao">
                 <h2>Novo cartão</h2>
+                <p class="descricao-campo">Se preencher o vencimento, ele decide em qual fatura uma compra entra (até o dia do vencimento, fatura desse mês; depois, do mês seguinte). Sem vencimento, usa o fechamento.</p>
                 <form id="formNovoCartao" class="form-nova-despesa">
                     <input type="text" id="cartaoNome" placeholder="Nome (ex: Nubank)" autocomplete="off" required>
                     <input type="number" min="1" max="31" id="cartaoDiaFechamento" placeholder="Dia de fechamento" required>
@@ -208,28 +210,28 @@
          qualquer arquivo abaixo. Não precisa no script da CDN (já é
          versionado no próprio nome do pacote, @2). -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/config/supabase.js?v=202608261018"></script>
-    <script src="js/core/state.js?v=202608261018"></script>
-    <script src="js/core/icones.js?v=202608261018"></script>
-    <script src="js/services/auth.js?v=202608261018"></script>
-    <script src="js/services/despesas.js?v=202608261018"></script>
-    <script src="js/services/carteiras.js?v=202608261018"></script>
-    <script src="js/services/cartoes.js?v=202608261018"></script>
-    <script src="js/services/investimentos.js?v=202608261018"></script>
-    <script src="js/services/despesasFixas.js?v=202608261018"></script>
-    <script src="js/services/insights.js?v=202608261018"></script>
-    <script src="js/ui/login.js?v=202608261018"></script>
-    <script src="js/ui/modal.js?v=202608261018"></script>
-    <script src="js/ui/dashboard.js?v=202608261018"></script>
-    <script src="js/ui/resumo.js?v=202608261018"></script>
-    <script src="js/ui/projecao.js?v=202608261018"></script>
-    <script src="js/ui/insights.js?v=202608261018"></script>
-    <script src="js/ui/abas.js?v=202608261018"></script>
-    <script src="js/ui/carteiras.js?v=202608261018"></script>
-    <script src="js/ui/cartoes.js?v=202608261018"></script>
-    <script src="js/ui/investimentos.js?v=202608261018"></script>
-    <script src="js/ui/despesasFixas.js?v=202608261018"></script>
-    <script src="js/core/app.js?v=202608261018"></script>
+    <script src="js/config/supabase.js?v=202608261111"></script>
+    <script src="js/core/state.js?v=202608261111"></script>
+    <script src="js/core/icones.js?v=202608261111"></script>
+    <script src="js/services/auth.js?v=202608261111"></script>
+    <script src="js/services/despesas.js?v=202608261111"></script>
+    <script src="js/services/carteiras.js?v=202608261111"></script>
+    <script src="js/services/cartoes.js?v=202608261111"></script>
+    <script src="js/services/investimentos.js?v=202608261111"></script>
+    <script src="js/services/despesasFixas.js?v=202608261111"></script>
+    <script src="js/services/insights.js?v=202608261111"></script>
+    <script src="js/ui/login.js?v=202608261111"></script>
+    <script src="js/ui/modal.js?v=202608261111"></script>
+    <script src="js/ui/dashboard.js?v=202608261111"></script>
+    <script src="js/ui/resumo.js?v=202608261111"></script>
+    <script src="js/ui/projecao.js?v=202608261111"></script>
+    <script src="js/ui/insights.js?v=202608261111"></script>
+    <script src="js/ui/abas.js?v=202608261111"></script>
+    <script src="js/ui/carteiras.js?v=202608261111"></script>
+    <script src="js/ui/cartoes.js?v=202608261111"></script>
+    <script src="js/ui/investimentos.js?v=202608261111"></script>
+    <script src="js/ui/despesasFixas.js?v=202608261111"></script>
+    <script src="js/core/app.js?v=202608261111"></script>
 
 </body>
 </html>

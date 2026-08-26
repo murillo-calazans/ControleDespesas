@@ -11,6 +11,7 @@ let cartaoSelecionadoId = null;
 let competenciaSelecionada = null; // "YYYY-MM"
 let pagamentosFaturaCache = [];
 let pessoaFaturaSelecionada = null; // null = "Total" (todo mundo); senão, usuarioId
+let cartaoEditandoId = null; // cartão com o form de fechamento/vencimento aberto
 
 function registrarCartoes() {
     const form = document.getElementById("formNovoCartao");
@@ -47,16 +48,29 @@ async function aoCriarCartao(evento) {
     document.getElementById("formNovoCartao").reset();
     APP.cartoes = await buscarCartoes();
     renderizarCartoes();
+    popularFormaPagamentoNovaDespesa();
 }
 
-/** "YYYY-MM" da fatura em que uma despesa cai, dado o dia de fechamento do cartão. */
-function competenciaFatura(dataISO, diaFechamento) {
+/** "YYYY-MM" da fatura em que uma despesa cai, dado o dia de corte do
+ *  cartão (fechamento ou vencimento — ver diaCorteFatura). Compra até
+ *  esse dia (incluso) entra na fatura desse mês; depois dele, na do
+ *  mês seguinte. */
+function competenciaFatura(dataISO, diaCorte) {
     let [ano, mes, dia] = dataISO.split("-").map(Number);
-    if (dia > diaFechamento) {
+    if (dia > diaCorte) {
         mes += 1;
         if (mes > 12) { mes = 1; ano += 1; }
     }
     return `${ano}-${String(mes).padStart(2, "0")}`;
+}
+
+/** Dia que decide em qual fatura uma despesa cai: o vencimento, quando
+ *  cadastrado (compra até o dia do vencimento entra na fatura desse
+ *  mês, só depois dele vai pra próxima — é assim que esse casal pensa
+ *  o ciclo, não pelo fechamento em si); sem vencimento cadastrado,
+ *  cai pro fechamento. */
+function diaCorteFatura(cartao) {
+    return cartao.diaVencimento || cartao.diaFechamento;
 }
 
 function somarMesACompetencia(competencia, delta) {
@@ -73,10 +87,48 @@ function rotuloCompetencia(competencia) {
     return `${nomes[Number(mes) - 1]}/${ano}`;
 }
 
+/** Despesas fixas ativas nesse cartão que ainda não têm lançamento
+ *  real na fatura de "competencia" (o cron só cria no 5º dia útil do
+ *  mês — ver database/schema-fixas-quinto-dia-util.sql) nem foram
+ *  puladas — devolve como projeção, mesma ideia de
+ *  despesasFixasVirtuaisParaMes em js/ui/dashboard.js, só que pela
+ *  competência da fatura em vez do mês calendário. Assim a fatura já
+ *  aparece completa (Netflix, assinaturas etc.) mesmo antes do
+ *  lançamento automático acontecer, em vez de ficar "presa" só no
+ *  relatório de Despesas. */
+function despesasFixasVirtuaisParaFatura(cartao, competencia) {
+    return APP.despesasFixas
+        .filter(f => f.ativa && String(f.cartaoId) === String(cartao.id))
+        .filter(f => !APP.despesas.some(d =>
+            d.despesaFixaId === f.id && competenciaFatura(d.dataDespesa, diaCorteFatura(cartao)) === competencia
+        ))
+        .filter(f => !APP.despesasFixasPuladas.some(p => p.despesaFixaId === f.id && p.mes === competencia))
+        .map(f => ({
+            id: `fixa-${f.id}-${competencia}`,
+            usuarioId: f.usuarioId,
+            usuarioNome: f.usuarioNome,
+            valor: f.valor,
+            categoria: f.categoria,
+            formaPagamento: f.formaPagamento,
+            cartaoId: f.cartaoId,
+            despesaFixaId: f.id,
+            descricao: f.descricao,
+            parcelaAtual: null,
+            parcelaTotal: null,
+            parcelaGrupoId: null,
+            dataDespesa: `${competencia}-01`,
+            mensagemOriginal: f.descricao || "Despesa fixa ainda não lançada",
+            confiancaIA: null,
+            compartilhada: f.compartilhada,
+            virtual: true
+        }));
+}
+
 function despesasDaFatura(cartao, competencia) {
-    return APP.despesas.filter(d =>
-        d.cartaoId === cartao.id && competenciaFatura(d.dataDespesa, cartao.diaFechamento) === competencia
+    const reais = APP.despesas.filter(d =>
+        d.cartaoId === cartao.id && competenciaFatura(d.dataDespesa, diaCorteFatura(cartao)) === competencia
     );
+    return [...reais, ...despesasFixasVirtuaisParaFatura(cartao, competencia)];
 }
 
 /** Mesma fatura, mas do ponto de vista de uma pessoa específica: só as
@@ -103,9 +155,9 @@ function competenciasDoCartao(cartao) {
     const chaves = new Set(
         APP.despesas
             .filter(d => d.cartaoId === cartao.id)
-            .map(d => competenciaFatura(d.dataDespesa, cartao.diaFechamento))
+            .map(d => competenciaFatura(d.dataDespesa, diaCorteFatura(cartao)))
     );
-    chaves.add(competenciaFatura(hojeISO, cartao.diaFechamento));
+    chaves.add(competenciaFatura(hojeISO, diaCorteFatura(cartao)));
     return [...chaves].sort();
 }
 
@@ -115,7 +167,7 @@ async function selecionarCartao(cartaoId) {
     if (!cartao) return;
 
     const hojeISO = new Date().toISOString().slice(0, 10);
-    competenciaSelecionada = competenciaFatura(hojeISO, cartao.diaFechamento);
+    competenciaSelecionada = competenciaFatura(hojeISO, diaCorteFatura(cartao));
     pessoaFaturaSelecionada = APP.usuario.id;
 
     pagamentosFaturaCache = await buscarFaturaPagamentos(cartaoId);
@@ -132,7 +184,10 @@ async function aoMarcarFaturaPaga() {
     const cartao = APP.cartoes.find(c => String(c.id) === String(cartaoSelecionadoId));
     if (!cartao) return;
 
-    const lista = despesasDaFatura(cartao, competenciaSelecionada);
+    // Só as despesas reais entram no pagamento — as "previstas" (fixas
+    // ainda não lançadas) só aparecem pra planejamento, não dá pra
+    // pagar uma cobrança que ainda não existe de verdade.
+    const lista = despesasDaFatura(cartao, competenciaSelecionada).filter(d => !d.virtual);
     const total = lista.reduce((soma, d) => soma + d.valor, 0);
     if (total <= 0) return;
 
@@ -178,6 +233,7 @@ async function aoExcluirCartao(id) {
 
     APP.cartoes = APP.cartoes.filter(c => String(c.id) !== String(id));
     renderizarCartoes();
+    popularFormaPagamentoNovaDespesa();
 }
 
 function renderizarCartoes() {
@@ -191,16 +247,37 @@ function renderizarCartoes() {
     }
 
     container.innerHTML = APP.cartoes.map(c => {
+        if (String(cartaoEditandoId) === String(c.id)) {
+            return `
+                <div class="stat-tile">
+                    <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
+                    <div class="filtros-linha" style="margin-top:8px">
+                        <label>Fecha
+                            <input type="number" min="1" max="31" class="input-cartao-fechamento" value="${c.diaFechamento}">
+                        </label>
+                        <label>Vence
+                            <input type="number" min="1" max="31" class="input-cartao-vencimento" value="${c.diaVencimento ?? ""}" placeholder="opcional">
+                        </label>
+                    </div>
+                    <div class="filtros-linha" style="margin-top:10px">
+                        <button type="button" class="botao-primario botao-pequeno" data-salvar-cartao="${c.id}">Salvar</button>
+                        <button type="button" class="botao-editar" data-cancelar-edicao-cartao title="Cancelar">✕</button>
+                    </div>
+                </div>
+            `;
+        }
+
         const hojeISO = new Date().toISOString().slice(0, 10);
-        const competenciaAtual = competenciaFatura(hojeISO, c.diaFechamento);
+        const competenciaAtual = competenciaFatura(hojeISO, diaCorteFatura(c));
         const total = despesasDaFatura(c, competenciaAtual).reduce((soma, d) => soma + d.valor, 0);
         return `
             <div class="stat-tile cartao-clicavel" data-cartao-id="${c.id}">
+                <button type="button" class="botao-editar" data-editar-cartao-id="${c.id}" title="Editar fechamento/vencimento">✏️</button>
                 <button type="button" class="botao-excluir" data-excluir-cartao-id="${c.id}" title="Excluir cartão">&times;</button>
                 ${statIcone("💳", "azul")}
                 <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
                 <div class="stat-valor">${formatarMoeda(total)}</div>
-                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · fecha dia ${c.diaFechamento}</div>
+                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · ${c.diaVencimento ? `vence dia ${c.diaVencimento}` : `fecha dia ${c.diaFechamento}`}</div>
             </div>
         `;
     }).join("");
@@ -216,9 +293,48 @@ function renderizarCartoes() {
         });
     });
 
+    container.querySelectorAll("[data-editar-cartao-id]").forEach(botao => {
+        botao.addEventListener("click", evento => {
+            evento.stopPropagation();
+            cartaoEditandoId = botao.dataset.editarCartaoId;
+            renderizarCartoes();
+        });
+    });
+
+    container.querySelectorAll("[data-cancelar-edicao-cartao]").forEach(botao => {
+        botao.addEventListener("click", evento => {
+            evento.stopPropagation();
+            cartaoEditandoId = null;
+            renderizarCartoes();
+        });
+    });
+
+    container.querySelectorAll("[data-salvar-cartao]").forEach(botao => {
+        botao.addEventListener("click", evento => {
+            evento.stopPropagation();
+            aoSalvarEdicaoCartao(botao.dataset.salvarCartao);
+        });
+    });
+
     if (cartaoSelecionadoId && APP.cartoes.some(c => String(c.id) === String(cartaoSelecionadoId))) {
         renderizarDetalheFatura();
     }
+}
+
+async function aoSalvarEdicaoCartao(id) {
+    const diaFechamento = Number(document.querySelector(".input-cartao-fechamento").value);
+    const diaVencimento = Number(document.querySelector(".input-cartao-vencimento").value) || null;
+    if (!diaFechamento) return;
+
+    const ok = await atualizarCartao(id, { dia_fechamento: diaFechamento, dia_vencimento: diaVencimento });
+    if (!ok) {
+        alert("Não foi possível atualizar o cartão. Veja o console pra detalhes.");
+        return;
+    }
+
+    cartaoEditandoId = null;
+    APP.cartoes = await buscarCartoes();
+    renderizarCartoes();
 }
 
 function renderizarDetalheFatura() {
@@ -296,9 +412,9 @@ function renderizarDetalheFatura() {
                     <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pessoa</th><th>Valor</th></tr></thead>
                     <tbody>
                         ${lista.map(d => `
-                            <tr>
-                                <td>${formatarDataBR(d.dataDespesa)}</td>
-                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}</td>
+                            <tr${d.virtual ? ' class="linha-despesa-virtual" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês"' : ""}>
+                                <td>${d.virtual ? "—" : formatarDataBR(d.dataDespesa)}</td>
+                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}${d.virtual ? ' <span class="badge-parcela">prevista</span>' : ""}</td>
                                 <td>${escaparHtml(d.categoria)}</td>
                                 <td>${escaparHtml(d.compartilhada ? "Ambos" : d.usuarioNome)}</td>
                                 <td class="valor-cell">${formatarMoeda(d.valorExibido)}</td>

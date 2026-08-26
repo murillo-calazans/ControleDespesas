@@ -47,11 +47,13 @@ async function aoRegistrarDespesa(evento) {
     if (!texto) return;
 
     const pessoaAlvo = document.getElementById("inputPessoaDespesa")?.value || null;
+    const chaveFormaPagamentoAlvo = document.getElementById("inputFormaPagamentoDespesa")?.value || null;
+    const { formaPagamento: formaPagamentoAlvo, cartaoId: cartaoAlvo } = decodificarFormaPagamento(chaveFormaPagamentoAlvo);
 
     botao.disabled = true;
     resultado.hidden = true;
 
-    const resposta = await registrarDespesa(texto, pessoaAlvo);
+    const resposta = await registrarDespesa(texto, pessoaAlvo, formaPagamentoAlvo, cartaoAlvo);
 
     botao.disabled = false;
 
@@ -184,18 +186,21 @@ function popularFiltros() {
             APP.carteiras.map(c => `<option value="${c.usuarioId}">${escaparHtml(c.usuarioNome)}</option>`).join("") +
             '<option value="ambos">Ambos (dividir)</option>';
     }
+
+    popularFormaPagamentoNovaDespesa();
 }
 
 /** Mês "de fato" de uma despesa pro agrupamento do relatório: se foi
  *  no crédito, respeita o fechamento do cartão — uma compra feita
- *  depois do dia de fechamento cai na fatura do mês seguinte, igual
- *  no extrato real (mesma regra de competenciaFatura em js/ui/cartoes.js).
+ *  depois do dia de corte (vencimento, se cadastrado, senão o
+ *  fechamento) cai na fatura do mês seguinte, igual no extrato real
+ *  (mesma regra de competenciaFatura/diaCorteFatura em js/ui/cartoes.js).
  *  Sem cartão (ou cartão não encontrado), usa a data mesmo. */
 function mesEfetivoDespesa(despesa) {
     if (!despesa.cartaoId) return despesa.dataDespesa.slice(0, 7);
     const cartao = APP.cartoes.find(c => String(c.id) === String(despesa.cartaoId));
     if (!cartao) return despesa.dataDespesa.slice(0, 7);
-    return competenciaFatura(despesa.dataDespesa, cartao.diaFechamento);
+    return competenciaFatura(despesa.dataDespesa, diaCorteFatura(cartao));
 }
 
 function rotuloMes(chaveMes) {
@@ -397,6 +402,33 @@ function opcoesFormaPagamento() {
     ];
 }
 
+/** Desfaz chaveFormaPagamento: "credito:<id>" -> { formaPagamento:
+ *  "crédito", cartaoId }; qualquer outro valor vira ele mesmo, sem
+ *  cartão. Usado tanto pra editar uma despesa já lançada quanto pro
+ *  seletor do campo de "Novo gasto". */
+function decodificarFormaPagamento(chave) {
+    if (!chave) return { formaPagamento: null, cartaoId: null };
+    return chave.startsWith("credito:")
+        ? { formaPagamento: "crédito", cartaoId: chave.slice("credito:".length) }
+        : { formaPagamento: chave, cartaoId: null };
+}
+
+/** Repovoa o seletor de forma de pagamento do campo "Novo gasto" —
+ *  chamada tanto no login quanto sempre que a lista de cartões muda
+ *  (aoCriarCartao/aoSalvarEdicaoCartao/aoExcluirCartao em
+ *  js/ui/cartoes.js também chamam essa função), senão um cartão novo
+ *  não apareceria como opção até recarregar a página. */
+function popularFormaPagamentoNovaDespesa() {
+    const select = document.getElementById("inputFormaPagamentoDespesa");
+    if (!select) return;
+
+    const valorAtual = select.value;
+    select.innerHTML = opcoesFormaPagamento()
+        .map(op => `<option value="${op.valor}">${escaparHtml(op.rotulo)}</option>`).join("");
+
+    if ([...select.options].some(o => o.value === valorAtual)) select.value = valorAtual;
+}
+
 function renderizarTabela(lista) {
     const container = document.getElementById("listaDespesas");
     if (!container) return;
@@ -536,9 +568,7 @@ async function aoAlterarCategoriaDespesa(id, categoria) {
 }
 
 async function aoAlterarFormaPagamentoDespesa(id, chave) {
-    const [formaPagamento, cartaoId] = chave.startsWith("credito:")
-        ? ["crédito", chave.slice("credito:".length)]
-        : [chave, null];
+    const { formaPagamento, cartaoId } = decodificarFormaPagamento(chave);
 
     const ok = await atualizarFormaPagamentoDespesa(id, formaPagamento, cartaoId);
     if (!ok) {

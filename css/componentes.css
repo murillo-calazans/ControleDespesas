@@ -46,6 +46,7 @@
 
 .form-nova-despesa{
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
 }
 
@@ -129,6 +130,16 @@
     font-size: 14px;
     color: var(--cor-texto);
     min-width: 160px;
+}
+
+.filtros-linha input{
+    background: var(--cor-fundo-elevado);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--cor-texto);
+    width: 90px;
 }
 
 .kpi-grid{
@@ -298,6 +309,25 @@
 .botao-excluir:hover{
     background: #FEF2F2;
     color: var(--cor-erro);
+}
+
+.botao-editar{
+    width: 26px;
+    height: 26px;
+
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+
+    color: var(--cor-texto-suave);
+    font-size: 13px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.botao-editar:hover{
+    background: var(--cor-fundo-elevado);
+    color: var(--cor-texto);
 }
 
 .alerta-vazio{

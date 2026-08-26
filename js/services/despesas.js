@@ -9,16 +9,24 @@
  */
 
 /**
- * Registra uma despesa a partir de texto livre (ex.: "Gastei 10 reais
- * na padaria no crédito"). Retorna:
+ * Registra uma despesa a partir de texto livre (ex.: "Mercado 150").
+ * Categoria (e fixo/parcelamento, se mencionado no texto) a IA
+ * descobre sozinha; forma de pagamento e cartão, quando vêm do
+ * seletor ao lado do campo (formaPagamento/cartaoId), têm prioridade
+ * sobre o que a IA tentar extrair da mensagem. Retorna:
  * - { ok: true, registrado: true, despesa, usuarioNome } — gravou.
  * - { ok: true, registrado: false } — a IA não entendeu isso como
  *   um gasto (ex.: "oi"), nada foi gravado.
  * - { ok: false, mensagem } — erro (rede, IA fora do ar, etc.).
  */
-async function registrarDespesa(texto, pessoaAlvo) {
+async function registrarDespesa(texto, pessoaAlvo, formaPagamento, cartaoId) {
     const { data, error } = await supabaseClient.functions.invoke("parse-despesa", {
-        body: { texto, pessoaAlvo: pessoaAlvo || null }
+        body: {
+            texto,
+            pessoaAlvo: pessoaAlvo || null,
+            formaPagamentoAlvo: formaPagamento || null,
+            cartaoAlvo: cartaoId || null
+        }
     });
 
     if (error) {
