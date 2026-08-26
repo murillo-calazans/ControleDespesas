@@ -82,7 +82,7 @@ Se tipo="investimento", tente identificar em "conta" a corretora/banco/plataform
 Em "descricao", devolva um resumo curto e limpo do que foi comprado/pago (1 a 4 palavras), sempre em português correto (corrija erros de digitação). Nunca inclua nela o valor, a forma de pagamento, o cartão, a parcela (tipo "2/5") ou palavras como "fixo"/"todo mês"/"mensal". Exemplos: "870 Alugel fixo" -> "Aluguel"; "gastei 50 reais de uber" -> "Uber"; "paguei a conta de luz" -> "Conta de luz"; "30 no ifood no crédito" -> "iFood"; "paguei roupas 500 2/5" -> "Roupas". Se não der pra extrair nada específico, use o nome da categoria.
 
 Se faltar a forma de pagamento numa despesa, use "outro".
-Se faltar a data, ou a mensagem disser "hoje", use a data de hoje (${dataAtualISO}). Se disser "ontem" ou um dia da semana, calcule a partir de hoje.
+Se faltar a data, ou a mensagem disser "hoje", use a data de hoje (${dataAtualISO}). Se disser "ontem" ou um dia da semana, calcule a partir de hoje. Se citar uma data completa (ex.: "15 de setembro", "15/09"), use essa data (ano atual, a menos que a mensagem diga outro ano). Se citar só um mês, sem dia (ex.: "em setembro", "mês de outubro", "lançar em setembro"), use o dia 1 desse mês, ano atual.
 Se o valor ou a categoria não puderem ser inferidos com razoável certeza, ainda assim faça sua melhor tentativa, mas marque confianca="baixa". Caso contrário, marque "media" se houve alguma suposição, ou "alta" se a mensagem foi clara.
 
 Mensagem: "${texto}"
