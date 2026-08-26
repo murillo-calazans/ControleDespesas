@@ -151,6 +151,16 @@ async function atualizarDataDespesa(id, dataISO) {
     return true;
 }
 
+/** Reatribui a descrição de uma despesa já existente. */
+async function atualizarDescricaoDespesa(id, descricao) {
+    const { error } = await supabaseClient.from("despesas").update({ descricao }).eq("id", id);
+    if (error) {
+        console.error("Falha ao reatribuir descrição da despesa:", error);
+        return false;
+    }
+    return true;
+}
+
 /** Remove uma despesa (RLS exige estar logado como um dos dois usuários). */
 async function excluirDespesa(id) {
     const { error } = await supabaseClient.from("despesas").delete().eq("id", id);

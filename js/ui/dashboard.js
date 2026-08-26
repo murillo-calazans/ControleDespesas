@@ -478,7 +478,10 @@ function renderizarTabela(lista) {
                         <td>
                             <input type="date" class="input-data-linha" data-id-despesa="${d.id}" value="${d.dataDespesa}">
                         </td>
-                        <td title="${escaparHtml(d.mensagemOriginal)}">${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}</td>
+                        <td>
+                            <input type="text" class="input-descricao-linha" data-id-despesa="${d.id}" value="${escaparHtml(d.descricao || d.mensagemOriginal)}" title="${escaparHtml(d.mensagemOriginal)}">
+                            ${d.parcelaTotal ? `<span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}
+                        </td>
                         <td>
                             <select class="select-categoria-linha" data-id-despesa="${d.id}">
                                 ${CATEGORIAS.map(c => `<option value="${c}"${c === d.categoria ? " selected" : ""}>${c}</option>`).join("")}
@@ -528,6 +531,21 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".input-data-linha").forEach(input => {
         input.addEventListener("change", () => aoAlterarDataDespesa(input.dataset.idDespesa, input.value));
     });
+
+    container.querySelectorAll(".input-descricao-linha").forEach(input => {
+        input.addEventListener("change", () => aoAlterarDescricaoDespesa(input.dataset.idDespesa, input.value));
+    });
+}
+
+async function aoAlterarDescricaoDespesa(id, descricao) {
+    const ok = await atualizarDescricaoDespesa(id, descricao.trim() || null);
+    if (!ok) {
+        alert("Não foi possível reatribuir a descrição da despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    renderizarDashboard();
 }
 
 async function aoPularDespesaFixa(despesaFixaId, mesChave) {
