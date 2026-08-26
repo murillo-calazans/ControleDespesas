@@ -276,28 +276,31 @@ function renderizarDetalheFatura() {
                 `).join("")}
             </div>
             <div class="kpi-grid">
-                <div class="stat-tile">
+                <div class="stat-tile cartao-clicavel${!pessoaFaturaSelecionada ? " stat-tile-destaque" : ""}" data-selecionar-total>
                     ${statIcone("🧾", "azul")}
                     <div class="stat-label">Total da fatura</div>
                     <div class="stat-valor">${formatarMoeda(totalFatura)}</div>
-                    <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"}</div>
+                    <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"} · clique pra ver os dois juntos</div>
                 </div>
+                ${pessoaFaturaSelecionada ? `
                 <div class="stat-tile">
                     ${statIconePessoa(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "", opcoesPessoa.findIndex(op => op.id === pessoaFaturaSelecionada))}
                     <div class="stat-label">Fatura de ${escaparHtml(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "")}</div>
                     <div class="stat-valor">${formatarMoeda(totalExibido)}</div>
                 </div>
+                ` : ""}
             </div>
             ${lista.length === 0
                 ? '<p class="alerta-vazio">Nenhum gasto nessa fatura.</p>'
                 : `<table class="tabela-despesas">
-                    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead>
+                    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pessoa</th><th>Valor</th></tr></thead>
                     <tbody>
                         ${lista.map(d => `
                             <tr>
                                 <td>${formatarDataBR(d.dataDespesa)}</td>
                                 <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}</td>
                                 <td>${escaparHtml(d.categoria)}</td>
+                                <td>${escaparHtml(d.compartilhada ? "Ambos" : d.usuarioNome)}</td>
                                 <td class="valor-cell">${formatarMoeda(d.valorExibido)}</td>
                             </tr>
                         `).join("")}
@@ -325,6 +328,13 @@ function renderizarDetalheFatura() {
     container.querySelectorAll("[data-pessoa-fatura]").forEach(pill => {
         pill.addEventListener("click", () => {
             pessoaFaturaSelecionada = pill.dataset.pessoaFatura || null;
+            renderizarDetalheFatura();
+        });
+    });
+
+    container.querySelectorAll("[data-selecionar-total]").forEach(tile => {
+        tile.addEventListener("click", () => {
+            pessoaFaturaSelecionada = null;
             renderizarDetalheFatura();
         });
     });
