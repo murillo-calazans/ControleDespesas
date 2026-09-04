@@ -29,6 +29,16 @@
 
     --cor-sombra: rgba(28, 38, 33, 0.08);
 
+    --nubank-cor: #6B3FA0;
+    --nubank-fundo: #EDE3F7;
+    --nubank-linha: rgba(107, 63, 160, 0.08);
+    --nubank-borda: rgba(107, 63, 160, 0.35);
+
+    --itau-cor: #B4611C;
+    --itau-fundo: #FBE7D2;
+    --itau-linha: rgba(180, 97, 28, 0.08);
+    --itau-borda: rgba(180, 97, 28, 0.4);
+
     --raio-card: 16px;
     --raio-botao: 999px;
 

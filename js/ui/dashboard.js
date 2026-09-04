@@ -429,6 +429,16 @@ function popularFormaPagamentoNovaDespesa() {
     if ([...select.options].some(o => o.value === valorAtual)) select.value = valorAtual;
 }
 
+/** Classe de cor suave por bandeira pra linha da tabela — só despesas
+ *  no crédito com cartão reconhecido (Nubank/Itaú, ver identificarBanco
+ *  em js/core/icones.js) ganham a cor; o resto fica sem tingir. */
+function classeLinhaBancoDespesa(d) {
+    if (d.formaPagamento !== "crédito" || !d.cartaoId) return "";
+    const cartao = APP.cartoes.find(c => String(c.id) === String(d.cartaoId));
+    const banco = cartao ? identificarBanco(cartao.nome) : null;
+    return banco ? `linha-banco-${banco}` : "";
+}
+
 function renderizarTabela(lista) {
     const container = document.getElementById("listaDespesas");
     if (!container) return;
@@ -457,13 +467,13 @@ function renderizarTabela(lista) {
                 ${lista.map(d => {
                     if (d.virtual) {
                         return `
-                        <tr class="linha-despesa-virtual" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês">
+                        <tr class="linha-despesa-virtual ${classeLinhaBancoDespesa(d)}" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês">
                             <td>${formatarDataBR(d.dataDespesa)}</td>
                             <td>${escaparHtml(d.descricao || d.mensagemOriginal)} <span class="badge-parcela">prevista</span></td>
                             <td>${escaparHtml(d.categoria)}</td>
                             <td>${escaparHtml(opcoesPagamento.find(op => op.valor === chaveFormaPagamento(d))?.rotulo ?? d.formaPagamento)}</td>
                             <td>${escaparHtml(d.compartilhada ? "Ambos (dividir)" : d.usuarioNome)}</td>
-                            <td class="valor-cell">${formatarMoeda(valorEfetivo(d))}</td>
+                            <td class="valor-cell">${formatarMoeda(d.valor)}</td>
                             <td><button type="button" class="botao-excluir" data-pular-fixa="${d.despesaFixaId}" data-mes-fixa="${d.mesChave}" title="Pular esse mês (imprevisto)">&times;</button></td>
                         </tr>
                     `;
@@ -474,13 +484,14 @@ function renderizarTabela(lista) {
                         ? ""
                         : `<option value="${escaparHtml(chaveAtual)}" selected>${escaparHtml(d.formaPagamento)}</option>`;
                     return `
-                    <tr>
+                    <tr class="${classeLinhaBancoDespesa(d)}">
                         <td>
                             <input type="date" class="input-data-linha" data-id-despesa="${d.id}" value="${d.dataDespesa}">
                         </td>
                         <td>
                             <input type="text" class="input-descricao-linha" data-id-despesa="${d.id}" value="${escaparHtml(d.descricao || d.mensagemOriginal)}" title="${escaparHtml(d.mensagemOriginal)}">
                             ${d.parcelaTotal ? `<span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}
+                            ${d.formaPagamento !== "crédito" && d.efetivada === false ? '<span class="badge-parcela" title="Data futura — ainda não debitou a carteira, debita sozinho quando o dia chegar">prevista</span>' : ""}
                         </td>
                         <td>
                             <select class="select-categoria-linha" data-id-despesa="${d.id}">
@@ -499,7 +510,9 @@ function renderizarTabela(lista) {
                                 <option value="ambos"${d.compartilhada ? " selected" : ""}>Ambos (dividir)</option>
                             </select>
                         </td>
-                        <td class="valor-cell">${formatarMoeda(valorEfetivo(d))}</td>
+                        <td class="valor-cell">
+                            <input type="number" step="0.01" min="0.01" class="input-valor-linha" data-id-despesa="${d.id}" value="${d.valor}">
+                        </td>
                         <td><button type="button" class="botao-excluir" data-id="${d.id}" title="Excluir">&times;</button></td>
                     </tr>
                 `;
@@ -535,6 +548,44 @@ function renderizarTabela(lista) {
     container.querySelectorAll(".input-descricao-linha").forEach(input => {
         input.addEventListener("change", () => aoAlterarDescricaoDespesa(input.dataset.idDespesa, input.value));
     });
+
+    container.querySelectorAll(".input-valor-linha").forEach(input => {
+        input.addEventListener("change", () => aoAlterarValorDespesa(input.dataset.idDespesa, input.value));
+    });
+}
+
+async function aoAlterarValorDespesa(id, valorTexto) {
+    const despesa = APP.despesas.find(d => String(d.id) === String(id));
+    if (!despesa) return;
+
+    const valor = Number(valorTexto);
+    if (!valor || valor <= 0) {
+        renderizarDashboard();
+        return;
+    }
+
+    let aplicarATodas = false;
+    if (despesa.parcelaGrupoId) {
+        aplicarATodas = confirm("Aplicar esse valor em TODAS as parcelas dessa compra? Cancelar muda só essa parcela.");
+    } else if (despesa.despesaFixaId) {
+        aplicarATodas = confirm("Aplicar esse valor nos outros meses já lançados dessa despesa fixa também, e nos próximos lançamentos automáticos? Cancelar muda só esse mês.");
+    }
+
+    const ok = await atualizarValorDespesa(despesa, valor, aplicarATodas);
+    if (!ok) {
+        alert("Não foi possível reatribuir o valor da despesa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    if (aplicarATodas && despesa.despesaFixaId) {
+        APP.despesasFixas = await buscarDespesasFixas();
+        renderizarDespesasFixas();
+    }
+    APP.carteiras = await buscarCarteiras();
+    renderizarDashboard();
+    renderizarCarteiras();
+    renderizarResumo();
 }
 
 async function aoAlterarDescricaoDespesa(id, descricao) {

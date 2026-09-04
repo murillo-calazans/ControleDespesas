@@ -236,7 +236,51 @@ async function aoExcluirCartao(id) {
     popularFormaPagamentoNovaDespesa();
 }
 
+/** Total da fatura atual de cada cartão, do ponto de vista de uma
+ *  pessoa (valor cheio do que é dela + metade do que é "ambos"),
+ *  somado entre todos os cartões — é o "gasto total de crédito" da
+ *  pessoa nesse ciclo, juntando Nubank e Itaú. Sem usuarioId, soma o
+ *  valor cheio de todo mundo (visão "Total dos cartões"). */
+function totalCreditoPorPessoa(usuarioId) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    return APP.cartoes.reduce((soma, c) => {
+        const competenciaAtual = competenciaFatura(hojeISO, diaCorteFatura(c));
+        return soma + despesasDaFaturaPorPessoa(c, competenciaAtual, usuarioId).reduce((s, d) => s + d.valorExibido, 0);
+    }, 0);
+}
+
+function renderizarKpisCartoes() {
+    const container = document.getElementById("kpisCartoes");
+    if (!container) return;
+
+    if (APP.cartoes.length === 0) {
+        container.innerHTML = "";
+        return;
+    }
+
+    const totalGeral = totalCreditoPorPessoa(null);
+
+    container.innerHTML = `
+        <div class="stat-tile stat-tile-destaque">
+            ${statIcone("💳", "azul")}
+            <div class="stat-label">Total dos cartões</div>
+            <div class="stat-valor">${formatarMoeda(totalGeral)}</div>
+            <div class="stat-sublinha">Soma das faturas atuais de todos os cartões</div>
+        </div>
+        ${APP.carteiras.map((c, indice) => `
+            <div class="stat-tile">
+                ${statIconePessoa(c.usuarioNome, indice)}
+                <div class="stat-label">${escaparHtml(c.usuarioNome)}</div>
+                <div class="stat-valor">${formatarMoeda(totalCreditoPorPessoa(c.usuarioId))}</div>
+                <div class="stat-sublinha">Nas duas faturas, com metade do "ambos"</div>
+            </div>
+        `).join("")}
+    `;
+}
+
 function renderizarCartoes() {
+    renderizarKpisCartoes();
+
     const container = document.getElementById("listaCartoes");
     if (!container) return;
 
@@ -270,11 +314,13 @@ function renderizarCartoes() {
         const hojeISO = new Date().toISOString().slice(0, 10);
         const competenciaAtual = competenciaFatura(hojeISO, diaCorteFatura(c));
         const total = despesasDaFatura(c, competenciaAtual).reduce((soma, d) => soma + d.valor, 0);
+        const banco = identificarBanco(c.nome);
+        const classeBanco = banco ? ` stat-tile-banco stat-tile-${banco}` : "";
         return `
-            <div class="stat-tile cartao-clicavel" data-cartao-id="${c.id}">
+            <div class="stat-tile cartao-clicavel${classeBanco}" data-cartao-id="${c.id}">
                 <button type="button" class="botao-editar" data-editar-cartao-id="${c.id}" title="Editar fechamento/vencimento">✏️</button>
                 <button type="button" class="botao-excluir" data-excluir-cartao-id="${c.id}" title="Excluir cartão">&times;</button>
-                ${statIcone("💳", "azul")}
+                ${statIconeBanco(c.nome)}
                 <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
                 <div class="stat-valor">${formatarMoeda(total)}</div>
                 <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · ${c.diaVencimento ? `vence dia ${c.diaVencimento}` : `fecha dia ${c.diaFechamento}`}</div>
@@ -351,6 +397,8 @@ function renderizarDetalheFatura() {
     const totalFatura = listaTotal.reduce((soma, d) => soma + d.valor, 0);
     const lista = despesasDaFaturaPorPessoa(cartao, competenciaSelecionada, pessoaFaturaSelecionada);
     const totalExibido = lista.reduce((soma, d) => soma + d.valorExibido, 0);
+    const banco = identificarBanco(cartao.nome);
+    const classeLinhaBanco = banco ? ` linha-banco-${banco}` : "";
     const jaPaga = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === competenciaSelecionada);
     const competencias = competenciasDoCartao(cartao);
 
@@ -412,7 +460,7 @@ function renderizarDetalheFatura() {
                     <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pessoa</th><th>Valor</th></tr></thead>
                     <tbody>
                         ${lista.map(d => `
-                            <tr${d.virtual ? ' class="linha-despesa-virtual" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês"' : ""}>
+                            <tr class="${d.virtual ? "linha-despesa-virtual" : classeLinhaBanco}"${d.virtual ? ' title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês"' : ""}>
                                 <td>${d.virtual ? "—" : formatarDataBR(d.dataDespesa)}</td>
                                 <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}${d.virtual ? ' <span class="badge-parcela">prevista</span>' : ""}</td>
                                 <td>${escaparHtml(d.categoria)}</td>

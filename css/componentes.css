@@ -196,6 +196,30 @@
     color: var(--cor-primaria);
 }
 
+.stat-tile-banco{
+    border-top: 4px solid transparent;
+}
+
+.stat-tile-nubank{
+    border-top-color: var(--nubank-cor);
+    background: linear-gradient(180deg, var(--nubank-fundo) 0%, var(--cor-fundo-card) 90px);
+}
+
+.stat-tile-itau{
+    border-top-color: var(--itau-cor);
+    background: linear-gradient(180deg, var(--itau-fundo) 0%, var(--cor-fundo-card) 90px);
+}
+
+.linha-banco-nubank{
+    background: var(--nubank-linha);
+    border-left: 3px solid var(--nubank-borda);
+}
+
+.linha-banco-itau{
+    background: var(--itau-linha);
+    border-left: 3px solid var(--itau-borda);
+}
+
 .tabela-despesas{
     width: 100%;
     border-collapse: collapse;
@@ -229,7 +253,8 @@
 .select-forma-pagamento-linha,
 .select-categoria-linha,
 .input-data-linha,
-.input-descricao-linha{
+.input-descricao-linha,
+.input-valor-linha{
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -248,9 +273,20 @@
 .input-data-linha:hover,
 .input-data-linha:focus,
 .input-descricao-linha:hover,
-.input-descricao-linha:focus{
+.input-descricao-linha:focus,
+.input-valor-linha:hover,
+.input-valor-linha:focus{
     border-color: var(--cor-borda);
     background: var(--cor-fundo-elevado);
+}
+
+.input-valor-linha{
+    width: 90px;
+    cursor: text;
+    font-family: inherit;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
 .input-descricao-linha{
