@@ -5,9 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Controle de Despesas</title>
     <link rel="stylesheet" href="css/style.css?v=202609081709">
-    <link rel="stylesheet" href="css/componentes.css?v=202609081729">
+    <link rel="stylesheet" href="css/componentes.css?v=202609081750">
+    <link rel="manifest" href="manifest.json?v=202609081745">
+    <meta name="theme-color" content="#163A26">
+    <link rel="apple-touch-icon" href="icons/icon-180x180.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Despesas">
 </head>
 <body class="nao-autenticado">
+
+    <div id="avisoModoApp" class="aviso-modo-app">👁️ Modo visualização — lançamentos pelo navegador</div>
 
     <div class="tela-login">
         <div class="tela-login-card">
@@ -70,7 +78,7 @@
 
         <div data-aba-conteudo="despesas" hidden>
 
-            <section class="cartao">
+            <section class="cartao oculta-em-modo-app">
                 <h2>Novo gasto ou investimento</h2>
                 <p class="descricao-campo">Escreva só a descrição e o valor — a categoria a IA descobre sozinha. Ex.: "Padaria 10", "Aluguel 1500 fixo", "Sofá 3000 em 6x" ou "Investi 500 na XP".</p>
                 <form id="formNovaDespesa" class="form-nova-despesa">
@@ -118,7 +126,7 @@
                 <div id="listaSalarios"></div>
             </section>
 
-            <section class="cartao">
+            <section class="cartao oculta-em-modo-app">
                 <h2>Novo movimento</h2>
                 <p class="descricao-campo">Depósito, retirada ou ajuste manual de saldo — não passa pela IA.</p>
                 <form id="formMovimentoCarteira" class="form-nova-despesa">
@@ -148,7 +156,7 @@
 
         <div data-aba-conteudo="cartoes" hidden>
 
-            <section class="cartao">
+            <section class="cartao oculta-em-modo-app">
                 <h2>Novo cartão</h2>
                 <p class="descricao-campo">O fechamento decide em qual fatura uma compra entra (até esse dia, fatura desse mês; depois, do mês seguinte). O vencimento é só a data em que a fatura vence pra pagamento — não muda em qual fatura a despesa cai.</p>
                 <form id="formNovoCartao" class="form-nova-despesa">
@@ -233,7 +241,7 @@
     <script src="js/ui/cartoes.js?v=202609081651"></script>
     <script src="js/ui/investimentos.js?v=202609081200"></script>
     <script src="js/ui/despesasFixas.js?v=202609081200"></script>
-    <script src="js/core/app.js?v=202609081200"></script>
+    <script src="js/core/app.js?v=202609081750"></script>
 
 </body>
 </html>

@@ -1,3 +1,29 @@
+/* Modo visualização (PWA instalado): esconde tudo que lança dado —
+   ver detectarModoApp em js/core/app.js. */
+.aviso-modo-app{
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    padding: 8px 16px;
+
+    background: var(--cor-aviso);
+    color: white;
+
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+body.modo-app .aviso-modo-app{
+    display: flex;
+}
+
+body.modo-app .oculta-em-modo-app,
+body.modo-app .botao-marcar-pago{
+    display: none !important;
+}
+
 .cartao{
     background: var(--cor-fundo-card);
     border: 1px solid var(--cor-borda);

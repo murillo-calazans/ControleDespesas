@@ -1,0 +1,26 @@
+{
+    "name": "Controle de Despesas",
+    "short_name": "Despesas",
+    "description": "Acompanhamento de despesas, carteiras, cartões e investimentos — modo visualização quando instalado como app.",
+    "start_url": "./?modo=app",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#F5F1E7",
+    "theme_color": "#163A26",
+    "lang": "pt-BR",
+    "icons": [
+        {
+            "src": "icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}
