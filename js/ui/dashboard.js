@@ -117,11 +117,12 @@ function mostrarResultadoRegistro(texto, tipo) {
 /** Roda depois de login — busca tudo de uma vez (despesas, carteiras,
  *  cartões, investimentos, despesas fixas) e renderiza cada aba. */
 async function inicializarDadosAutenticado() {
-    const [despesas, carteiras, movimentosCarteira, cartoes, investimentos, despesasFixas, despesasFixasPuladas, salarios] = await Promise.all([
+    const [despesas, carteiras, movimentosCarteira, cartoes, faturaPagamentos, investimentos, despesasFixas, despesasFixasPuladas, salarios] = await Promise.all([
         buscarDespesas(),
         buscarCarteiras(),
         buscarMovimentos(),
         buscarCartoes(),
+        buscarTodasFaturaPagamentos(),
         buscarInvestimentos(),
         buscarDespesasFixas(),
         buscarDespesasFixasPuladas(),
@@ -132,6 +133,7 @@ async function inicializarDadosAutenticado() {
     APP.carteiras = carteiras;
     APP.movimentosCarteira = movimentosCarteira;
     APP.cartoes = cartoes;
+    APP.faturaPagamentos = faturaPagamentos;
     APP.investimentos = investimentos;
     APP.despesasFixas = despesasFixas;
     APP.despesasFixasPuladas = despesasFixasPuladas;
@@ -192,10 +194,10 @@ function popularFiltros() {
 
 /** Mês "de fato" de uma despesa pro agrupamento do relatório: se foi
  *  no crédito, respeita o fechamento do cartão — uma compra feita
- *  depois do dia de corte (vencimento, se cadastrado, senão o
- *  fechamento) cai na fatura do mês seguinte, igual no extrato real
- *  (mesma regra de competenciaFatura/diaCorteFatura em js/ui/cartoes.js).
- *  Sem cartão (ou cartão não encontrado), usa a data mesmo. */
+ *  depois do dia de fechamento cai na fatura do mês seguinte, igual no
+ *  extrato real (mesma regra de competenciaFatura/diaCorteFatura em
+ *  js/ui/cartoes.js). O vencimento não entra nessa conta. Sem cartão
+ *  (ou cartão não encontrado), usa a data mesmo. */
 function mesEfetivoDespesa(despesa) {
     if (!despesa.cartaoId) return despesa.dataDespesa.slice(0, 7);
     const cartao = APP.cartoes.find(c => String(c.id) === String(despesa.cartaoId));
@@ -300,6 +302,30 @@ function despesasFixasVirtuaisParaMes(mesChave) {
  *  (inclusive compartilhada sem filtro de pessoa — "Todos"). */
 function valorEfetivo(despesa) {
     return APP.filtros.usuarioId && despesa.compartilhada ? despesa.valor / 2 : despesa.valor;
+}
+
+/** Se uma despesa já saiu de fato da carteira de alguém. Fora do
+ *  crédito, é só olhar "efetivada" (o trigger no banco só debita
+ *  quando ela vira true — ver database/schema-despesas-efetivada.sql).
+ *  No crédito não tem essa ligação: a compra em si nunca debita a
+ *  carteira, só a fatura paga debita (ver
+ *  database/schema-fatura-pagamento-split.sql) — por isso aqui olha
+ *  se já existe um pagamento pra competência daquele cartão, em vez de
+ *  "efetivada" (que só reflete se a data já chegou, não se foi paga).
+ *  Despesa fixa ainda não lançada (virtual) nunca está paga. */
+function despesaEstaPaga(despesa) {
+    if (despesa.virtual) return false;
+
+    if (despesa.formaPagamento === "crédito") {
+        const cartao = APP.cartoes.find(c => String(c.id) === String(despesa.cartaoId));
+        if (!cartao) return false;
+        const competencia = competenciaFatura(despesa.dataDespesa, diaCorteFatura(cartao));
+        return APP.faturaPagamentos.some(fp =>
+            String(fp.cartaoId) === String(despesa.cartaoId) && fp.competencia.slice(0, 7) === competencia
+        );
+    }
+
+    return despesa.efetivada === true;
 }
 
 function renderizarDashboard() {
@@ -439,6 +465,123 @@ function classeLinhaBancoDespesa(d) {
     return banco ? `linha-banco-${banco}` : "";
 }
 
+/** HTML de uma linha da tabela de despesas — despesa fixa ainda não
+ *  lançada (virtual) só tem "pular"; despesa real em aberto (não-crédito
+ *  e ainda não efetivada) ganha o botão de marcar como paga, junto do
+ *  de excluir. */
+/** Badge da coluna Status — mesmo critério de despesaEstaPaga, só em
+ *  forma de rótulo (verde/vermelho), pra não depender só da cor de
+ *  fundo da linha pra dar pra ler o status. */
+function badgeStatusHtml(d) {
+    return despesaEstaPaga(d)
+        ? '<span class="badge-status badge-status-paga">✅ Pago</span>'
+        : '<span class="badge-status badge-status-aberta">🕓 Em aberto</span>';
+}
+
+function linhaDespesaHtml(d, opcoesPagamento) {
+    if (d.virtual) {
+        return `
+            <tr class="linha-despesa-virtual ${classeLinhaBancoDespesa(d)}" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês">
+                <td>${formatarDataBR(d.dataDespesa)}</td>
+                <td>${escaparHtml(d.descricao || d.mensagemOriginal)} <span class="badge-parcela">prevista</span></td>
+                <td>${escaparHtml(d.categoria)}</td>
+                <td>${escaparHtml(opcoesPagamento.find(op => op.valor === chaveFormaPagamento(d))?.rotulo ?? d.formaPagamento)}</td>
+                <td>${escaparHtml(d.compartilhada ? "Ambos (dividir)" : d.usuarioNome)}</td>
+                <td class="valor-cell">${formatarMoeda(d.valor)}</td>
+                <td>${badgeStatusHtml(d)}</td>
+                <td><button type="button" class="botao-excluir" data-pular-fixa="${d.despesaFixaId}" data-mes-fixa="${d.mesChave}" title="Pular esse mês (imprevisto)">&times;</button></td>
+            </tr>
+        `;
+    }
+
+    const chaveAtual = chaveFormaPagamento(d);
+    const opcaoFaltando = opcoesPagamento.some(op => op.valor === chaveAtual)
+        ? ""
+        : `<option value="${escaparHtml(chaveAtual)}" selected>${escaparHtml(d.formaPagamento)}</option>`;
+    const podeMarcarPaga = d.formaPagamento !== "crédito" && d.efetivada === false;
+    const podeMarcarPendente = d.formaPagamento !== "crédito" && d.efetivada === true;
+    // Reserva o espaço do botão opcional (✓/↺) mesmo quando a despesa é
+    // no crédito e não tem nenhum dos dois — senão o "excluir" pula de
+    // posição conforme a linha tem 1 ou 2 botões, ficando torto.
+    const acaoPrincipal = podeMarcarPaga
+        ? `<button type="button" class="botao-editar botao-marcar-pago" data-marcar-pago="${d.id}" title="Marcar como pago — debita a carteira do responsável agora">✓</button>`
+        : podeMarcarPendente
+            ? `<button type="button" class="botao-editar" data-marcar-pendente="${d.id}" title="Marcar como pendente — volta pra 'Em aberto' e estorna o débito da carteira">↺</button>`
+            : '<span class="acao-espacador"></span>';
+    return `
+        <tr class="${classeLinhaBancoDespesa(d)}">
+            <td>
+                <input type="date" class="input-data-linha" data-id-despesa="${d.id}" value="${d.dataDespesa}">
+            </td>
+            <td>
+                <div class="celula-descricao">
+                    <input type="text" class="input-descricao-linha" data-id-despesa="${d.id}" value="${escaparHtml(d.descricao || d.mensagemOriginal)}" title="${escaparHtml(d.mensagemOriginal)}">
+                    ${d.parcelaTotal ? `<span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}
+                    ${podeMarcarPaga ? '<span class="badge-parcela" title="Data futura — ainda não debitou a carteira, debita sozinho quando o dia chegar">prevista</span>' : ""}
+                </div>
+            </td>
+            <td>
+                <select class="select-categoria-linha" data-id-despesa="${d.id}">
+                    ${CATEGORIAS.map(c => `<option value="${c}"${c === d.categoria ? " selected" : ""}>${c}</option>`).join("")}
+                </select>
+            </td>
+            <td>
+                <select class="select-forma-pagamento-linha" data-id-despesa="${d.id}">
+                    ${opcoesPagamento.map(op => `<option value="${op.valor}"${op.valor === chaveAtual ? " selected" : ""}>${escaparHtml(op.rotulo)}</option>`).join("")}
+                    ${opcaoFaltando}
+                </select>
+            </td>
+            <td>
+                <select class="select-pessoa-linha" data-id-despesa="${d.id}">
+                    ${APP.carteiras.map(c => `<option value="${c.usuarioId}"${!d.compartilhada && String(c.usuarioId) === String(d.usuarioId) ? " selected" : ""}>${escaparHtml(c.usuarioNome)}</option>`).join("")}
+                    <option value="ambos"${d.compartilhada ? " selected" : ""}>Ambos (dividir)</option>
+                </select>
+            </td>
+            <td class="valor-cell">
+                <span class="prefixo-moeda">
+                    <span class="prefixo-moeda-label">R$</span>
+                    <input type="number" step="0.01" min="0.01" class="input-valor-linha" data-id-despesa="${d.id}" value="${d.valor}">
+                </span>
+            </td>
+            <td>${badgeStatusHtml(d)}</td>
+            <td>
+                <div class="celula-acoes">
+                    ${acaoPrincipal}
+                    <button type="button" class="botao-excluir" data-id="${d.id}" title="Excluir">&times;</button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+/** Tabela de uma seção (Em aberto/Pagas), ou o aviso de lista vazia. */
+function tabelaDespesasHtml(lista, opcoesPagamento) {
+    if (lista.length === 0) {
+        return '<p class="alerta-vazio">Nenhuma despesa aqui.</p>';
+    }
+    return `
+        <div class="tabela-scroll">
+            <table class="tabela-despesas">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Forma de pagamento</th>
+                        <th>Pessoa</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lista.map(d => linhaDespesaHtml(d, opcoesPagamento)).join("")}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
 function renderizarTabela(lista) {
     const container = document.getElementById("listaDespesas");
     if (!container) return;
@@ -449,80 +592,26 @@ function renderizarTabela(lista) {
     }
 
     const opcoesPagamento = opcoesFormaPagamento();
+    const abertas = lista.filter(d => !despesaEstaPaga(d));
+    const pagas = lista.filter(d => despesaEstaPaga(d));
 
     container.innerHTML = `
-        <table class="tabela-despesas">
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Descrição</th>
-                    <th>Categoria</th>
-                    <th>Forma de pagamento</th>
-                    <th>Pessoa</th>
-                    <th>Valor</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${lista.map(d => {
-                    if (d.virtual) {
-                        return `
-                        <tr class="linha-despesa-virtual ${classeLinhaBancoDespesa(d)}" title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês">
-                            <td>${formatarDataBR(d.dataDespesa)}</td>
-                            <td>${escaparHtml(d.descricao || d.mensagemOriginal)} <span class="badge-parcela">prevista</span></td>
-                            <td>${escaparHtml(d.categoria)}</td>
-                            <td>${escaparHtml(opcoesPagamento.find(op => op.valor === chaveFormaPagamento(d))?.rotulo ?? d.formaPagamento)}</td>
-                            <td>${escaparHtml(d.compartilhada ? "Ambos (dividir)" : d.usuarioNome)}</td>
-                            <td class="valor-cell">${formatarMoeda(d.valor)}</td>
-                            <td><button type="button" class="botao-excluir" data-pular-fixa="${d.despesaFixaId}" data-mes-fixa="${d.mesChave}" title="Pular esse mês (imprevisto)">&times;</button></td>
-                        </tr>
-                    `;
-                    }
-
-                    const chaveAtual = chaveFormaPagamento(d);
-                    const opcaoFaltando = opcoesPagamento.some(op => op.valor === chaveAtual)
-                        ? ""
-                        : `<option value="${escaparHtml(chaveAtual)}" selected>${escaparHtml(d.formaPagamento)}</option>`;
-                    return `
-                    <tr class="${classeLinhaBancoDespesa(d)}">
-                        <td>
-                            <input type="date" class="input-data-linha" data-id-despesa="${d.id}" value="${d.dataDespesa}">
-                        </td>
-                        <td>
-                            <input type="text" class="input-descricao-linha" data-id-despesa="${d.id}" value="${escaparHtml(d.descricao || d.mensagemOriginal)}" title="${escaparHtml(d.mensagemOriginal)}">
-                            ${d.parcelaTotal ? `<span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}
-                            ${d.formaPagamento !== "crédito" && d.efetivada === false ? '<span class="badge-parcela" title="Data futura — ainda não debitou a carteira, debita sozinho quando o dia chegar">prevista</span>' : ""}
-                        </td>
-                        <td>
-                            <select class="select-categoria-linha" data-id-despesa="${d.id}">
-                                ${CATEGORIAS.map(c => `<option value="${c}"${c === d.categoria ? " selected" : ""}>${c}</option>`).join("")}
-                            </select>
-                        </td>
-                        <td>
-                            <select class="select-forma-pagamento-linha" data-id-despesa="${d.id}">
-                                ${opcoesPagamento.map(op => `<option value="${op.valor}"${op.valor === chaveAtual ? " selected" : ""}>${escaparHtml(op.rotulo)}</option>`).join("")}
-                                ${opcaoFaltando}
-                            </select>
-                        </td>
-                        <td>
-                            <select class="select-pessoa-linha" data-id-despesa="${d.id}">
-                                ${APP.carteiras.map(c => `<option value="${c.usuarioId}"${!d.compartilhada && String(c.usuarioId) === String(d.usuarioId) ? " selected" : ""}>${escaparHtml(c.usuarioNome)}</option>`).join("")}
-                                <option value="ambos"${d.compartilhada ? " selected" : ""}>Ambos (dividir)</option>
-                            </select>
-                        </td>
-                        <td class="valor-cell">
-                            <input type="number" step="0.01" min="0.01" class="input-valor-linha" data-id-despesa="${d.id}" value="${d.valor}">
-                        </td>
-                        <td><button type="button" class="botao-excluir" data-id="${d.id}" title="Excluir">&times;</button></td>
-                    </tr>
-                `;
-                }).join("")}
-            </tbody>
-        </table>
+        <h3 class="subtitulo-secao">🕓 Em aberto (${abertas.length})</h3>
+        ${tabelaDespesasHtml(abertas, opcoesPagamento)}
+        <h3 class="subtitulo-secao">✅ Pagas (${pagas.length})</h3>
+        ${tabelaDespesasHtml(pagas, opcoesPagamento)}
     `;
 
     container.querySelectorAll(".botao-excluir[data-id]").forEach(botao => {
         botao.addEventListener("click", () => aoExcluirDespesa(botao.dataset.id));
+    });
+
+    container.querySelectorAll("[data-marcar-pago]").forEach(botao => {
+        botao.addEventListener("click", () => aoMarcarDespesaPaga(botao.dataset.marcarPago));
+    });
+
+    container.querySelectorAll("[data-marcar-pendente]").forEach(botao => {
+        botao.addEventListener("click", () => aoMarcarDespesaPendente(botao.dataset.marcarPendente));
     });
 
     container.querySelectorAll("[data-pular-fixa]").forEach(botao => {
@@ -667,6 +756,41 @@ async function aoAlterarPessoaDespesa(id, usuarioId) {
     renderizarResumo();
 }
 
+/** Marca uma despesa em aberto como paga hoje — muda a data pra hoje
+ *  junto (ver marcarDespesaComoPaga), então o trigger no banco debita a
+ *  carteira na hora e ela pula de "Em aberto" pra "Pagas" no re-render. */
+async function aoMarcarDespesaPaga(id) {
+    const ok = await marcarDespesaComoPaga(id);
+    if (!ok) {
+        alert("Não foi possível marcar a despesa como paga. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    APP.carteiras = await buscarCarteiras();
+    renderizarDashboard();
+    renderizarCarteiras();
+    renderizarResumo();
+}
+
+/** Desfaz "marcar como pago": volta a despesa pra "Em aberto" e o
+ *  trigger no banco estorna o débito que tinha sido feito na carteira. */
+async function aoMarcarDespesaPendente(id) {
+    if (!confirm("Marcar essa despesa como pendente de novo? Isso estorna o valor na carteira de quem gastou.")) return;
+
+    const ok = await marcarDespesaComoPendente(id);
+    if (!ok) {
+        alert("Não foi possível marcar a despesa como pendente. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.despesas = await buscarDespesas();
+    APP.carteiras = await buscarCarteiras();
+    renderizarDashboard();
+    renderizarCarteiras();
+    renderizarResumo();
+}
+
 async function aoExcluirDespesa(id) {
     if (!confirm("Excluir essa despesa?")) return;
 
@@ -684,7 +808,8 @@ async function aoExcluirDespesa(id) {
 }
 
 function formatarMoeda(valor) {
-    return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const numero = Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `R$ ${numero}`;
 }
 
 function formatarDataBR(dataISO) {

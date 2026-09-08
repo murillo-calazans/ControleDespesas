@@ -31,6 +31,7 @@ const APP = {
     carteiras: [],
     movimentosCarteira: [],
     cartoes: [],
+    faturaPagamentos: [],
     investimentos: [],
     despesasFixas: [],
     despesasFixasPuladas: [],

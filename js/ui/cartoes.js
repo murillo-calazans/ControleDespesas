@@ -4,7 +4,11 @@
  * ==========================================================
  * Cadastro de cartão + fatura por ciclo de fechamento real (não mês
  * civil): clica num cartão, vê a fatura da competência atual, navega
- * entre meses, marca como paga (debita a carteira do dono via trigger).
+ * entre meses, marca como paga (debita a carteira de cada um pela
+ * parte que é dela — "ambos" divide ao meio — via trigger). Quem
+ * decide em qual fatura uma despesa cai é sempre o fechamento — o
+ * vencimento é só a data de pagamento, não influencia o agrupamento
+ * (ver diaCorteFatura).
  */
 
 let cartaoSelecionadoId = null;
@@ -51,10 +55,9 @@ async function aoCriarCartao(evento) {
     popularFormaPagamentoNovaDespesa();
 }
 
-/** "YYYY-MM" da fatura em que uma despesa cai, dado o dia de corte do
- *  cartão (fechamento ou vencimento — ver diaCorteFatura). Compra até
- *  esse dia (incluso) entra na fatura desse mês; depois dele, na do
- *  mês seguinte. */
+/** "YYYY-MM" da fatura em que uma despesa cai, dado o dia de fechamento
+ *  do cartão (ver diaCorteFatura). Compra até esse dia (incluso) entra
+ *  na fatura desse mês; depois dele, na do mês seguinte. */
 function competenciaFatura(dataISO, diaCorte) {
     let [ano, mes, dia] = dataISO.split("-").map(Number);
     if (dia > diaCorte) {
@@ -64,13 +67,11 @@ function competenciaFatura(dataISO, diaCorte) {
     return `${ano}-${String(mes).padStart(2, "0")}`;
 }
 
-/** Dia que decide em qual fatura uma despesa cai: o vencimento, quando
- *  cadastrado (compra até o dia do vencimento entra na fatura desse
- *  mês, só depois dele vai pra próxima — é assim que esse casal pensa
- *  o ciclo, não pelo fechamento em si); sem vencimento cadastrado,
- *  cai pro fechamento. */
+/** Dia que decide em qual fatura uma despesa cai: sempre o fechamento.
+ *  O vencimento não entra nessa conta — ele só diz quando a fatura
+ *  vence pra pagamento, não em qual fatura a despesa cai. */
 function diaCorteFatura(cartao) {
-    return cartao.diaVencimento || cartao.diaFechamento;
+    return cartao.diaFechamento;
 }
 
 function somarMesACompetencia(competencia, delta) {
@@ -191,7 +192,7 @@ async function aoMarcarFaturaPaga() {
     const total = lista.reduce((soma, d) => soma + d.valor, 0);
     if (total <= 0) return;
 
-    if (!confirm(`Marcar a fatura de ${rotuloCompetencia(competenciaSelecionada)} (${formatarMoeda(total)}) como paga? Isso vai descontar da carteira de ${cartao.usuarioNome}.`)) {
+    if (!confirm(`Marcar a fatura de ${rotuloCompetencia(competenciaSelecionada)} (${formatarMoeda(total)}) como paga? Isso vai descontar de cada carteira a parte que é dela (despesas "ambos" dividem ao meio).`)) {
         return;
     }
 
@@ -213,8 +214,10 @@ async function aoMarcarFaturaPaga() {
 
     pagamentosFaturaCache = await buscarFaturaPagamentos(cartao.id);
     APP.carteiras = await buscarCarteiras();
+    APP.faturaPagamentos = await buscarTodasFaturaPagamentos();
     renderizarDetalheFatura();
     renderizarCarteiras();
+    renderizarDashboard(); // despesas dessa fatura passam de "Em aberto" pra "Pagas"
 }
 
 async function aoExcluirCartao(id) {
@@ -323,7 +326,7 @@ function renderizarCartoes() {
                 ${statIconeBanco(c.nome)}
                 <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
                 <div class="stat-valor">${formatarMoeda(total)}</div>
-                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · ${c.diaVencimento ? `vence dia ${c.diaVencimento}` : `fecha dia ${c.diaFechamento}`}</div>
+                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · fecha dia ${c.diaFechamento}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</div>
             </div>
         `;
     }).join("");

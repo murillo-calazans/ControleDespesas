@@ -220,6 +220,31 @@
     border-left: 3px solid var(--itau-borda);
 }
 
+.badge-status{
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-status-paga{
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    color: #065F46;
+}
+
+.badge-status-aberta{
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+}
+
+.tabela-scroll{
+    overflow-x: auto;
+}
+
 .tabela-despesas{
     width: 100%;
     border-collapse: collapse;
@@ -249,6 +274,27 @@
     font-style: italic;
 }
 
+.subtitulo-secao{
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    margin: 4px 0 8px;
+}
+
+.subtitulo-secao:not(:first-child){
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--cor-borda);
+}
+
+.celula-acoes{
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    white-space: nowrap;
+}
+
 .select-pessoa-linha,
 .select-forma-pagamento-linha,
 .select-categoria-linha,
@@ -262,6 +308,16 @@
     font-size: 13px;
     color: var(--cor-texto);
     cursor: pointer;
+}
+
+/* Sem isso, um <select> sem largura própria estica pra preencher a
+   coluna inteira quando sobra espaço na tabela (ex.: tela larga) — a
+   seta nativa vai pro fim da coluna, longe do texto selecionado. */
+.select-pessoa-linha,
+.select-forma-pagamento-linha,
+.select-categoria-linha{
+    width: fit-content;
+    max-width: 100%;
 }
 
 .select-pessoa-linha:hover,
@@ -281,7 +337,7 @@
 }
 
 .input-valor-linha{
-    width: 90px;
+    width: 78px;
     cursor: text;
     font-family: inherit;
     font-weight: 600;
@@ -289,9 +345,48 @@
     text-align: right;
 }
 
+.prefixo-moeda{
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.prefixo-moeda-label{
+    position: absolute;
+    left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cor-texto-suave);
+    pointer-events: none;
+}
+
+.prefixo-moeda .input-valor-linha{
+    padding-left: 22px;
+}
+
+.botao-marcar-pago{
+    color: var(--cor-primaria);
+}
+
+.botao-marcar-pago:hover{
+    background: var(--cor-fundo-elevado);
+    color: var(--cor-primaria-hover);
+}
+
+/* Input + badges (parcela/prevista) lado a lado, não empilhados — sem
+   isso o input (que ocupa a célula inteira) empurra os badges pra uma
+   segunda linha, e cada linha da tabela acaba com uma altura diferente
+   dependendo de quantos badges aquela despesa tem. */
+.celula-descricao{
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+
 .input-descricao-linha{
-    width: 100%;
-    min-width: 140px;
+    flex: 1 1 120px;
+    min-width: 120px;
     cursor: text;
     font-family: inherit;
 }
@@ -357,6 +452,13 @@
     color: var(--cor-erro);
 }
 
+.acao-espacador{
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
 .botao-editar{
     width: 26px;
     height: 26px;
@@ -394,7 +496,7 @@
 
 .abas{
     padding: 16px 24px 0;
-    max-width: 1000px;
+    max-width: 1280px;
     margin: 0 auto;
 }
 

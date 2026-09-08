@@ -4,9 +4,10 @@
  * ==========================================================
  * Cadastro de cartões (com dia de fechamento/vencimento reais, pra
  * calcular a fatura por ciclo — ver competenciaFatura em
- * js/ui/cartoes.js) e o registro de pagamento de fatura, que debita
- * a carteira do dono do cartão (via trigger, ver
- * database/schema-carteiras-cartoes-fixas.sql).
+ * js/ui/cartoes.js) e o registro de pagamento de fatura, que debita a
+ * carteira de cada um pela parte que é dela — despesa por despesa
+ * daquela competência, "ambos" dividido ao meio (via trigger, ver
+ * database/schema-fatura-pagamento-split.sql).
  */
 
 /** Busca os cartões cadastrados pelo casal. */
@@ -68,7 +69,9 @@ async function excluirCartao(id) {
     return true;
 }
 
-/** Marca a fatura de uma competência (mês) como paga — debita a carteira do dono do cartão. */
+/** Marca a fatura de uma competência (mês) como paga — o trigger
+ *  reprocessa as despesas dessa competência e debita a carteira de
+ *  cada um pela parte que é dela (ver database/schema-fatura-pagamento-split.sql). */
 async function marcarFaturaPaga({ cartaoId, competencia, valorPago, dataPagamento }) {
     const { error } = await supabaseClient.from("fatura_pagamentos").insert({
         cartao_id: cartaoId,
@@ -90,6 +93,29 @@ async function buscarFaturaPagamentos(cartaoId) {
         .from("fatura_pagamentos")
         .select("*")
         .eq("cartao_id", cartaoId);
+
+    if (error) {
+        console.error("Falha ao buscar pagamentos de fatura:", error);
+        return [];
+    }
+
+    return data.map(linha => ({
+        id: linha.id,
+        cartaoId: linha.cartao_id,
+        competencia: linha.competencia,
+        valorPago: Number(linha.valor_pago),
+        dataPagamento: linha.data_pagamento
+    }));
+}
+
+/** Todos os pagamentos de fatura já registrados, de todos os cartões —
+ *  usado na aba Despesas pra saber se uma despesa no crédito já foi
+ *  paga (a fatura da competência dela foi quitada) sem precisar entrar
+ *  na aba Cartões (ver despesaEstaPaga em js/ui/dashboard.js). */
+async function buscarTodasFaturaPagamentos() {
+    const { data, error } = await supabaseClient
+        .from("fatura_pagamentos")
+        .select("*");
 
     if (error) {
         console.error("Falha ao buscar pagamentos de fatura:", error);

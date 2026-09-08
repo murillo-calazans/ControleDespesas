@@ -85,7 +85,8 @@ async function buscarDespesas() {
         dataDespesa: linha.data_despesa,
         mensagemOriginal: linha.mensagem_original,
         confiancaIA: linha.confianca_ia,
-        compartilhada: linha.compartilhada
+        compartilhada: linha.compartilhada,
+        efetivada: linha.efetivada
     }));
 }
 
@@ -116,6 +117,48 @@ async function atualizarPessoaDespesa(despesa, usuarioId) {
     return true;
 }
 
+/** Reatribui o valor de uma despesa já existente. "aplicarATodas"
+ *  decide o alcance quando ela é parcelada ou vem de uma despesa fixa:
+ *  - parcelada + aplicarATodas: muda TODAS as parcelas da compra
+ *    (mesmo parcelaGrupoId) — senão só aquele mês mudava e as outras
+ *    parcelas ficavam com o valor errado da compra original.
+ *  - despesa fixa + aplicarATodas: muda esse lançamento, os outros
+ *    meses já gerados dessa mesma fixa, E o molde (despesas_fixas),
+ *    pros próximos lançamentos automáticos já saírem com o valor novo.
+ *  Sem aplicarATodas (ou despesa avulsa), muda só essa linha. O saldo
+ *  da carteira se ajusta sozinho — o trigger já compara valor antigo x
+ *  novo por linha, e só mexe nas que já estão efetivadas. */
+async function atualizarValorDespesa(despesa, valor, aplicarATodas) {
+    if (aplicarATodas && despesa.parcelaGrupoId) {
+        const { error } = await supabaseClient.from("despesas")
+            .update({ valor }).eq("parcela_grupo_id", despesa.parcelaGrupoId);
+        if (error) {
+            console.error("Falha ao reatribuir valor das parcelas:", error);
+            return false;
+        }
+        return true;
+    }
+
+    if (aplicarATodas && despesa.despesaFixaId) {
+        const [{ error: erroDespesas }, { error: erroFixa }] = await Promise.all([
+            supabaseClient.from("despesas").update({ valor }).eq("despesa_fixa_id", despesa.despesaFixaId),
+            supabaseClient.from("despesas_fixas").update({ valor }).eq("id", despesa.despesaFixaId)
+        ]);
+        if (erroDespesas || erroFixa) {
+            console.error("Falha ao reatribuir valor da despesa fixa:", erroDespesas || erroFixa);
+            return false;
+        }
+        return true;
+    }
+
+    const { error } = await supabaseClient.from("despesas").update({ valor }).eq("id", despesa.id);
+    if (error) {
+        console.error("Falha ao reatribuir valor da despesa:", error);
+        return false;
+    }
+    return true;
+}
+
 /** Reatribui a forma de pagamento de uma despesa já existente — se for
  *  num cartão de crédito, já define junto qual cartão (cartaoId),
  *  numa atualização só. Define em qual fatura ela entra. */
@@ -141,9 +184,16 @@ async function atualizarCategoriaDespesa(id, categoria) {
     return true;
 }
 
-/** Reatribui a data de uma despesa já existente. */
+/** Reatribui a data de uma despesa já existente — recalcula junto
+ *  "efetivada" (data no futuro = ainda não debita a carteira; data
+ *  hoje/passado = debita/credita na hora, via trigger no banco). Assim
+ *  dá pra lançar uma previsão de gasto pro mês que vem sem ela mexer
+ *  no saldo antes da hora, sem precisar de ajuste manual depois. */
 async function atualizarDataDespesa(id, dataISO) {
-    const { error } = await supabaseClient.from("despesas").update({ data_despesa: dataISO }).eq("id", id);
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const { error } = await supabaseClient.from("despesas")
+        .update({ data_despesa: dataISO, efetivada: dataISO <= hojeISO })
+        .eq("id", id);
     if (error) {
         console.error("Falha ao reatribuir data da despesa:", error);
         return false;
@@ -156,6 +206,41 @@ async function atualizarDescricaoDespesa(id, descricao) {
     const { error } = await supabaseClient.from("despesas").update({ descricao }).eq("id", id);
     if (error) {
         console.error("Falha ao reatribuir descrição da despesa:", error);
+        return false;
+    }
+    return true;
+}
+
+/** Marca uma despesa em aberto (não-crédito, data futura, efetivada
+ *  false) como paga hoje: efetivada=true e data_despesa=hoje — mesmo
+ *  UPDATE que atualizarDataDespesa já faz ao trazer a data pro
+ *  presente, então o trigger no banco (trg_despesas_saldo, ver
+ *  database/schema-despesas-efetivada.sql) debita a carteira do
+ *  responsável na hora, sem precisar de ajuste nenhum no banco. */
+async function marcarDespesaComoPaga(id) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const { error } = await supabaseClient.from("despesas")
+        .update({ efetivada: true, data_despesa: hojeISO })
+        .eq("id", id);
+    if (error) {
+        console.error("Falha ao marcar despesa como paga:", error);
+        return false;
+    }
+    return true;
+}
+
+/** Desfaz o "marcar como pago": volta efetivada pra false (a data não
+ *  mexe — só o "pago hoje" tinha trazido ela pro presente). O trigger
+ *  no banco estorna o débito que tinha sido feito, mesmo raciocínio de
+ *  marcarDespesaComoPaga, mas invertido. Só faz sentido fora do
+ *  crédito (crédito nunca fica "efetivada" nesse sentido — quem paga é
+ *  a fatura inteira, na aba Cartões). */
+async function marcarDespesaComoPendente(id) {
+    const { error } = await supabaseClient.from("despesas")
+        .update({ efetivada: false })
+        .eq("id", id);
+    if (error) {
+        console.error("Falha ao marcar despesa como pendente:", error);
         return false;
     }
     return true;

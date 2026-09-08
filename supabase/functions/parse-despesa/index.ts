@@ -345,6 +345,7 @@ Deno.serve(async (req: Request) => {
             const parcelaGrupoId = crypto.randomUUID();
             const linhas = [];
             for (let n = parcelaAtualBruta; n <= parcelaTotalBruta; n++) {
+                const dataParcela = somarMeses(dataResultado, n - parcelaAtualBruta);
                 linhas.push({
                     usuario_id: usuarioIdAlvo,
                     valor,
@@ -352,7 +353,7 @@ Deno.serve(async (req: Request) => {
                     forma_pagamento: formaPagamento,
                     cartao_id: cartaoId,
                     descricao,
-                    data_despesa: somarMeses(dataResultado, n - parcelaAtualBruta),
+                    data_despesa: dataParcela,
                     mensagem_original: texto.trim(),
                     confianca_ia: confianca,
                     despesa_fixa_id: null,
@@ -360,6 +361,12 @@ Deno.serve(async (req: Request) => {
                     parcela_total: parcelaTotalBruta,
                     parcela_grupo_id: parcelaGrupoId,
                     compartilhada,
+                    // Parcela de mês futuro só debita quando a data chegar
+                    // (cron efetivar_despesas_vencidas, ver
+                    // database/schema-despesas-efetivada.sql) — sem isso,
+                    // débito/pix/dinheiro debitariam tudo de uma vez no
+                    // lançamento, mesmo pras parcelas dos meses seguintes.
+                    efetivada: dataParcela <= dataAtualISO,
                 });
             }
 
@@ -418,6 +425,10 @@ Deno.serve(async (req: Request) => {
                 confianca_ia: confianca,
                 despesa_fixa_id: despesaFixaId,
                 compartilhada,
+                // Previsão de gasto pro futuro (data depois de hoje) só
+                // debita quando o dia chegar — ver
+                // database/schema-despesas-efetivada.sql.
+                efetivada: dataResultado <= dataAtualISO,
             })
             .select()
             .single();
