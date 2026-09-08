@@ -474,8 +474,8 @@ function classeLinhaBancoDespesa(d) {
  *  fundo da linha pra dar pra ler o status. */
 function badgeStatusHtml(d) {
     return despesaEstaPaga(d)
-        ? '<span class="badge-status badge-status-paga">✅ Pago</span>'
-        : '<span class="badge-status badge-status-aberta">🕓 Em aberto</span>';
+        ? '<span class="badge-status badge-status-paga">✅ <span class="badge-status-texto">Pago</span></span>'
+        : '<span class="badge-status badge-status-aberta">🕓 <span class="badge-status-texto">Em aberto</span></span>';
 }
 
 function linhaDespesaHtml(d, opcoesPagamento) {
@@ -521,7 +521,7 @@ function linhaDespesaHtml(d, opcoesPagamento) {
                 </div>
             </td>
             <td>
-                <select class="select-categoria-linha" data-id-despesa="${d.id}">
+                <select class="select-categoria-linha" data-id-despesa="${d.id}" data-categoria="${escaparHtml(d.categoria)}">
                     ${CATEGORIAS.map(c => `<option value="${c}"${c === d.categoria ? " selected" : ""}>${c}</option>`).join("")}
                 </select>
             </td>
@@ -561,7 +561,7 @@ function tabelaDespesasHtml(lista, opcoesPagamento) {
     }
     return `
         <div class="tabela-scroll">
-            <table class="tabela-despesas">
+            <table class="tabela-despesas tabela-despesas-cards">
                 <thead>
                     <tr>
                         <th>Data</th>

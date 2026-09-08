@@ -300,6 +300,168 @@ body.modo-app .botao-marcar-pago{
     font-style: italic;
 }
 
+/* Lista de Despesas em tela estreita (celular/app instalado): a
+   tabela vira uma lista de cartões — cada <tr> continua com as mesmas
+   8 colunas/inputs de sempre (edição inline não muda), só reorganizadas
+   num grid nomeado em vez de lado a lado. Só essa tabela (classe extra
+   .tabela-despesas-cards) — Movimentos/Investimentos/Fixas continuam
+   como tabela normal. */
+@media (max-width: 720px){
+
+    .tabela-despesas-cards thead{
+        display: none;
+    }
+
+    .tabela-despesas-cards,
+    .tabela-despesas-cards tbody{
+        display: block;
+    }
+
+    .tabela-despesas-cards tr{
+        display: grid;
+        position: relative;
+        grid-template-columns: 44px minmax(120px, 1fr) 64px;
+        grid-template-areas:
+            "status pessoa    pessoa"
+            "status descricao descricao"
+            "status categoria forma"
+            "status data      acoes";
+        column-gap: 10px;
+        row-gap: 2px;
+        align-items: center;
+
+        padding: 12px 84px 12px 10px;
+        margin-bottom: 8px;
+        border: 1px solid var(--cor-borda);
+        border-radius: 14px;
+        background: var(--cor-fundo-elevado);
+    }
+
+    .tabela-despesas-cards td{
+        border-bottom: none;
+        padding: 2px 0;
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .tabela-despesas-cards td:nth-child(1){ grid-area: data; }
+    .tabela-despesas-cards td:nth-child(2){ grid-area: descricao; }
+    .tabela-despesas-cards td:nth-child(3){ grid-area: categoria; }
+    .tabela-despesas-cards td:nth-child(4){ grid-area: forma; }
+    .tabela-despesas-cards td:nth-child(5){ grid-area: pessoa; }
+    .tabela-despesas-cards td:nth-child(7){ grid-area: status; align-self: start; }
+    .tabela-despesas-cards td:nth-child(8){ grid-area: acoes; justify-self: end; }
+
+    /* Valor fica fora do grid (posição absoluta no canto superior
+       direito do cartão) — assim a largura fixa do input não briga
+       por espaço de coluna com pessoa/categoria/forma e trunca nada. */
+    .tabela-despesas-cards td:nth-child(6){
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        text-align: right;
+    }
+
+    /* Só o input de texto (descrição) recebe reticências — <select>
+       nativo com overflow:hidden é inconsistente entre navegadores (o
+       texto some por completo em vez de truncar), então as caixas de
+       categoria/forma/pessoa contam com o grid dando espaço suficiente
+       em vez de cortar o conteúdo. */
+    .tabela-despesas-cards .input-descricao-linha{
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Ícone circular no lugar do texto "Pago"/"Em aberto". */
+    .tabela-despesas-cards .badge-status{
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-size: 17px;
+    }
+
+    .tabela-despesas-cards .badge-status-texto{
+        display: none;
+    }
+
+    .tabela-despesas-cards .select-pessoa-linha{
+        font-size: 11px;
+        color: var(--cor-texto-suave);
+        padding: 0;
+    }
+
+    .tabela-despesas-cards .input-descricao-linha{
+        font-size: 15px;
+        font-weight: 600;
+        padding: 0;
+    }
+
+    .tabela-despesas-cards .select-forma-pagamento-linha{
+        font-size: 11px;
+        color: var(--cor-texto-suave);
+        padding: 0;
+        text-align: right;
+    }
+
+    .tabela-despesas-cards .input-data-linha{
+        font-size: 11px;
+        color: var(--cor-texto-suave);
+        padding: 0;
+        border: none;
+        background: transparent;
+    }
+
+    .tabela-despesas-cards .valor-cell{
+        overflow: visible;
+    }
+
+    .tabela-despesas-cards .valor-cell .prefixo-moeda{
+        max-width: 100%;
+    }
+
+    .tabela-despesas-cards .valor-cell .input-valor-linha{
+        width: 7.5em;
+        font-size: 15px;
+    }
+
+    .tabela-despesas-cards .celula-acoes{
+        justify-content: flex-end;
+    }
+
+    /* Categoria como tag colorida — cor só decorativa, o <select>
+       continua editável normalmente. */
+    .tabela-despesas-cards .select-categoria-linha{
+        justify-self: start;
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        background: var(--cor-fundo-card);
+        border: 1px solid var(--cor-borda);
+    }
+
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Alimentação"]{ background: #FDE8CF; color: #92400E; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Mercado"]{ background: #D1FAE5; color: #065F46; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Transporte"]{ background: #DBEAFE; color: #1E40AF; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Saúde"]{ background: #FCE4EC; color: #9D174D; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Lazer"]{ background: #EDE3F7; color: #4C1D95; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Casa"]{ background: #F1E4D3; color: #7C4A1E; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Educação"]{ background: #E0E7FF; color: #3730A3; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Assinaturas"]{ background: #CFFAFE; color: #155E75; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Compras"]{ background: #FCE7F3; color: #9D174D; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Filho"]{ background: #EDE9FE; color: #5B21B6; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Pessoal"]{ background: #E5E7EB; color: #374151; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Presentes"]{ background: #FFE4E6; color: #9F1239; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Lanche"]{ background: #FEF9C3; color: #854D0E; border-color: transparent; }
+    .tabela-despesas-cards .select-categoria-linha[data-categoria="Outros"]{ background: var(--cor-fundo-elevado); color: var(--cor-texto-suave); }
+}
+
 .subtitulo-secao{
     font-size: 14px;
     font-weight: 600;
