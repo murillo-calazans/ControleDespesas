@@ -306,7 +306,7 @@ body.modo-app .botao-marcar-pago{
    num grid nomeado em vez de lado a lado. Só essa tabela (classe extra
    .tabela-despesas-cards) — Movimentos/Investimentos/Fixas continuam
    como tabela normal. */
-@media (max-width: 720px){
+@media (max-width: 768px){
 
     .tabela-despesas-cards thead{
         display: none;
@@ -812,4 +812,182 @@ body.modo-app .botao-marcar-pago{
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+/* ==========================================================
+   Layout mobile — navegação, KPIs, cartões, formulários, modal.
+   Mesmo breakpoint da lista de Despesas em cartões (acima). Vale
+   tanto pro PWA instalado quanto pro navegador normal no celular.
+   ========================================================== */
+@media (max-width: 768px){
+
+    /* Navegação por abas vira barra fixa no rodapé (padrão de app
+       mobile) — 6 abas numa pill horizontal ficavam apertadas. O
+       espaço reservado embaixo pra ela não tampar o conteúdo é feito
+       em main (ver style.css). */
+    .abas{
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 60;
+
+        max-width: none;
+        margin: 0;
+        padding: 0;
+
+        background: var(--cor-fundo-card);
+        border-top: 1px solid var(--cor-borda);
+        box-shadow: 0 -2px 8px var(--cor-sombra);
+    }
+
+    .abas-pill{
+        display: flex;
+        width: 100%;
+
+        gap: 0;
+        padding: 4px 2px calc(4px + env(safe-area-inset-bottom));
+
+        background: transparent;
+        border: none;
+        border-radius: 0;
+    }
+
+    .abas-pill button{
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+
+        padding: 6px 2px;
+        border-radius: 12px;
+
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .abas-pill button.aba-ativa{
+        background: transparent;
+        color: var(--cor-primaria);
+    }
+
+    /* Ícone acima do rótulo — mesmo espírito dos emojis já usados no
+       resto do app (header, botões de análise etc.), sem precisar
+       mudar o HTML/JS de abas.js. */
+    .abas-pill button::before{
+        font-size: 19px;
+        line-height: 1;
+    }
+
+    .abas-pill button[data-aba="resumo"]::before{ content: "📊"; }
+    .abas-pill button[data-aba="despesas"]::before{ content: "🧾"; }
+    .abas-pill button[data-aba="carteiras"]::before{ content: "👛"; }
+    .abas-pill button[data-aba="cartoes"]::before{ content: "💳"; }
+    .abas-pill button[data-aba="fixas"]::before{ content: "📌"; }
+    .abas-pill button[data-aba="investimentos"]::before{ content: "📈"; }
+
+    /* Cartões e KPIs — menos respiro interno pra aproveitar a largura
+       estreita da tela. */
+    .cartao{
+        padding: 14px;
+    }
+
+    .cartao h2{
+        font-size: 15px;
+    }
+
+    .kpi-grid{
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-tile{
+        padding: 12px;
+    }
+
+    .stat-icone{
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .stat-label{
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .stat-valor{
+        font-size: 19px;
+    }
+
+    .stat-sublinha{
+        font-size: 10px;
+    }
+
+    /* Formulários de lançamento (Nova despesa, Novo movimento, Novo
+       cartão — todos usam .form-nova-despesa) empilhados em vez de
+       espremidos lado a lado, com fonte >=16px pra não dar zoom
+       automático ao focar no Safari iOS. */
+    .form-nova-despesa{
+        flex-direction: column;
+    }
+
+    .form-nova-despesa input,
+    .form-nova-despesa select,
+    .form-nova-despesa .campo-com-icone{
+        width: 100%;
+        flex: none;
+        font-size: 16px;
+    }
+
+    .form-nova-despesa .botao-primario{
+        width: 100%;
+    }
+
+    .filtros-linha select,
+    .filtros-linha input{
+        font-size: 16px;
+    }
+
+    .linha-salario{
+        flex-wrap: wrap;
+    }
+
+    .input-salario-valor{
+        flex: 1;
+        min-width: 120px;
+        font-size: 16px;
+    }
+
+    /* Movimentos/Investimentos/Fixas/Fatura continuam em tabela (só
+       Despesas virou cartão, ver .tabela-despesas-cards acima) — linha
+       mais alta pro toque confortável e texto longo com reticências
+       em vez de espremer a tabela inteira. */
+    .tabela-despesas:not(.tabela-despesas-cards) td{
+        padding: 13px 10px;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Modal em tela cheia — uma caixa pequena centralizada fica
+       apertada demais pra formulários/textos maiores no celular. */
+    .modal-overlay{
+        padding: 0;
+        align-items: stretch;
+    }
+
+    .modal-caixa{
+        max-width: none;
+        width: 100%;
+        max-height: none;
+        height: 100%;
+        border-radius: 0;
+        padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    }
 }

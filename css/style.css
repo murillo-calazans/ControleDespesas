@@ -263,3 +263,55 @@ main{
     flex-direction: column;
     gap: 20px;
 }
+
+/* Layout mobile — mesmo breakpoint da navegação (componentes.css) e
+   da lista de Despesas em cartões (dashboard). Vale tanto pro PWA
+   instalado quanto pro navegador normal aberto num celular. */
+@media (max-width: 768px){
+
+    header{
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .header-logo{
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    header h1{
+        font-size: 15px;
+    }
+
+    .avatar-usuario{
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+    }
+
+    .usuario-logado{
+        font-size: 12px;
+    }
+
+    .botao-sair{
+        width: 30px;
+        height: 30px;
+        font-size: 13px;
+    }
+
+    main{
+        padding: 14px;
+        gap: 14px;
+        /* Espaço pra navegação fixa no rodapé (ver .abas em
+           componentes.css) não tampar o fim do conteúdo. */
+        padding-bottom: calc(78px + env(safe-area-inset-bottom));
+    }
+
+    /* Campo de login com menos de 16px dá zoom automático no Safari
+       iOS ao focar. */
+    .tela-login-card input{
+        font-size: 16px;
+    }
+}
