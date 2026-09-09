@@ -117,7 +117,7 @@ function popularFiltroMesCarteiras() {
     // Mesma lógica do filtro de mês das despesas (ver popularFiltros em
     // js/ui/dashboard.js): inclui até dezembro, mesmo sem movimento
     // nenhum ainda, pra dar pra ver a projeção do salário em meses futuros.
-    const mesAtual = new Date().toISOString().slice(0, 7);
+    const mesAtual = chaveMesLocal(new Date());
     const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.movimentosCarteira.map(m => m.criadoEm.slice(0, 7))])].sort().reverse();
     select.innerHTML = '<option value="">Todos os meses</option>' +
         meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");

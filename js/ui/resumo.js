@@ -14,7 +14,7 @@ function renderizarResumo() {
 
     const saldoTotal = APP.carteiras.reduce((soma, c) => soma + c.saldo, 0);
 
-    const mesAtualChave = new Date().toISOString().slice(0, 7);
+    const mesAtualChave = chaveMesLocal(new Date());
     const gastoMes = APP.despesas
         .filter(d => mesEfetivoDespesa(d) === mesAtualChave)
         .reduce((soma, d) => soma + d.valor, 0);

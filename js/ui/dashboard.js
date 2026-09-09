@@ -159,7 +159,7 @@ function popularFiltros() {
         // lançada neles ainda), pra dar pra selecionar meses futuros e já
         // ver a projeção das despesas fixas neles (ver
         // despesasFixasVirtuaisParaMes).
-        const mesAtual = new Date().toISOString().slice(0, 7);
+        const mesAtual = chaveMesLocal(new Date());
         const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.despesas.map(mesEfetivoDespesa)])].sort().reverse();
         filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
             meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
@@ -203,6 +203,17 @@ function mesEfetivoDespesa(despesa) {
     const cartao = APP.cartoes.find(c => String(c.id) === String(despesa.cartaoId));
     if (!cartao) return despesa.dataDespesa.slice(0, 7);
     return competenciaFatura(despesa.dataDespesa, diaCorteFatura(cartao));
+}
+
+/** "YYYY-MM" de um Date, no fuso local — nunca use
+ *  "data.toISOString().slice(0,7)" pra isso: toISOString() converte
+ *  pra UTC antes, e em fusos negativos (ex.: Brasil, UTC-3) o dia 1 de
+ *  um mês construído com "new Date(ano, mes, 1)" vira 21h do dia 31 do
+ *  mês anterior em UTC — a chave sai um mês adiantada/atrasada do
+ *  esperado. Foi a causa do bug da Projeção de saldo não bater com o
+ *  mês corrente. */
+function chaveMesLocal(data) {
+    return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function rotuloMes(chaveMes) {

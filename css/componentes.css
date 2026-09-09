@@ -510,7 +510,9 @@ body.modo-app .botao-marcar-pago{
 .select-categoria-linha,
 .input-data-linha,
 .input-descricao-linha,
-.input-valor-linha{
+.input-valor-linha,
+.input-taxa-linha,
+.select-periodo-taxa-linha{
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -525,7 +527,8 @@ body.modo-app .botao-marcar-pago{
    seta nativa vai pro fim da coluna, longe do texto selecionado. */
 .select-pessoa-linha,
 .select-forma-pagamento-linha,
-.select-categoria-linha{
+.select-categoria-linha,
+.select-periodo-taxa-linha{
     width: fit-content;
     max-width: 100%;
 }
@@ -541,7 +544,11 @@ body.modo-app .botao-marcar-pago{
 .input-descricao-linha:hover,
 .input-descricao-linha:focus,
 .input-valor-linha:hover,
-.input-valor-linha:focus{
+.input-valor-linha:focus,
+.input-taxa-linha:hover,
+.input-taxa-linha:focus,
+.select-periodo-taxa-linha:hover,
+.select-periodo-taxa-linha:focus{
     border-color: var(--cor-borda);
     background: var(--cor-fundo-elevado);
 }
@@ -551,6 +558,21 @@ body.modo-app .botao-marcar-pago{
     cursor: text;
     font-family: inherit;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.celula-taxa-juros{
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.input-taxa-linha{
+    width: 64px;
+    cursor: text;
+    font-family: inherit;
     font-variant-numeric: tabular-nums;
     text-align: right;
 }

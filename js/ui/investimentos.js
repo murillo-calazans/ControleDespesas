@@ -3,7 +3,9 @@
  * UI de Investimentos
  * ==========================================================
  * Registro acontece pela mesma caixa de texto da aba Despesas (a IA
- * classifica) — aqui só renderiza o total e a lista, e permite excluir.
+ * classifica) — aqui renderiza o total, a lista, permite excluir e
+ * configurar manualmente uma taxa de rendimento por investimento (ver
+ * database/schema-investimentos-taxa-juros.sql).
  */
 
 let filtroMesInvestimentos = null; // "YYYY-MM" ou null (todos os meses)
@@ -17,6 +19,22 @@ function registrarInvestimentos() {
         filtroMesInvestimentos = filtroMes.value || null;
         renderizarListaInvestimentos();
     });
+}
+
+/** Normaliza a taxa configurada (mensal ou anual) pra um equivalente
+ *  mensal via juros compostos — assim dá pra somar/comparar
+ *  investimentos com período diferente num "rendimento estimado" só.
+ *  null se o investimento não tem taxa configurada. */
+function taxaMensalEquivalente(investimento) {
+    if (investimento.taxaJuros == null || !investimento.periodoTaxa) return null;
+    if (investimento.periodoTaxa === "mensal") return investimento.taxaJuros;
+    return (Math.pow(1 + investimento.taxaJuros / 100, 1 / 12) - 1) * 100;
+}
+
+/** Rendimento estimado pro próximo mês, em R$ — null sem taxa configurada. */
+function rendimentoMensalEstimado(investimento) {
+    const taxaMensal = taxaMensalEquivalente(investimento);
+    return taxaMensal === null ? null : investimento.valor * (taxaMensal / 100);
 }
 
 function renderizarInvestimentos() {
@@ -45,6 +63,9 @@ function renderizarKpisInvestimentos() {
 
     const total = lista.reduce((soma, i) => soma + i.valor, 0);
 
+    const rendimentoMensal = lista.reduce((soma, i) => soma + (rendimentoMensalEstimado(i) ?? 0), 0);
+    const temAlgumaTaxa = lista.some(i => rendimentoMensalEstimado(i) !== null);
+
     const porPessoa = new Map();
     for (const i of lista) porPessoa.set(i.usuarioNome, (porPessoa.get(i.usuarioNome) ?? 0) + i.valor);
 
@@ -54,6 +75,14 @@ function renderizarKpisInvestimentos() {
             <div class="stat-label">Total investido</div>
             <div class="stat-valor">${formatarMoeda(total)}</div>
         </div>
+        ${temAlgumaTaxa ? `
+        <div class="stat-tile">
+            ${statIcone("📈", "azul")}
+            <div class="stat-label">Rendimento estimado (mês)</div>
+            <div class="stat-valor">${formatarMoeda(rendimentoMensal)}</div>
+            <div class="stat-sublinha">Só dos investimentos com taxa configurada</div>
+        </div>
+        ` : ""}
         ${[...porPessoa.entries()].map(([nome, valor], indice) => `
             <div class="stat-tile">
                 ${statIconePessoa(nome, indice)}
@@ -87,6 +116,8 @@ function renderizarListaInvestimentos() {
                         <th>Conta</th>
                         <th>Pessoa</th>
                         <th>Valor</th>
+                        <th>Taxa</th>
+                        <th>Rendimento/mês</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -98,6 +129,16 @@ function renderizarListaInvestimentos() {
                             <td>${escaparHtml(i.conta || "-")}</td>
                             <td>${escaparHtml(i.usuarioNome)}</td>
                             <td class="valor-cell">${formatarMoeda(i.valor)}</td>
+                            <td>
+                                <div class="celula-taxa-juros">
+                                    <input type="number" step="0.01" min="0" class="input-taxa-linha" data-id-investimento="${i.id}" value="${i.taxaJuros ?? ""}" placeholder="0,00">
+                                    <select class="select-periodo-taxa-linha" data-id-investimento="${i.id}">
+                                        <option value="mensal"${i.periodoTaxa !== "anual" ? " selected" : ""}>% ao mês</option>
+                                        <option value="anual"${i.periodoTaxa === "anual" ? " selected" : ""}>% ao ano</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td class="valor-cell">${rendimentoMensalEstimado(i) === null ? "-" : formatarMoeda(rendimentoMensalEstimado(i))}</td>
                             <td><button type="button" class="botao-excluir" data-id="${i.id}" title="Excluir">&times;</button></td>
                         </tr>
                     `).join("")}
@@ -109,6 +150,39 @@ function renderizarListaInvestimentos() {
     container.querySelectorAll(".botao-excluir").forEach(botao => {
         botao.addEventListener("click", () => aoExcluirInvestimento(botao.dataset.id));
     });
+
+    container.querySelectorAll(".input-taxa-linha").forEach(input => {
+        input.addEventListener("change", () => aoAlterarTaxaJurosInvestimento(input.dataset.idInvestimento));
+    });
+
+    container.querySelectorAll(".select-periodo-taxa-linha").forEach(select => {
+        select.addEventListener("change", () => aoAlterarTaxaJurosInvestimento(select.dataset.idInvestimento));
+    });
+}
+
+async function aoAlterarTaxaJurosInvestimento(id) {
+    const input = document.querySelector(`.input-taxa-linha[data-id-investimento="${id}"]`);
+    const select = document.querySelector(`.select-periodo-taxa-linha[data-id-investimento="${id}"]`);
+    if (!input || !select) return;
+
+    const valorDigitado = input.value.trim();
+    const taxaJuros = valorDigitado === "" ? null : Number(valorDigitado);
+    const periodoTaxa = taxaJuros === null ? null : select.value;
+
+    if (taxaJuros !== null && (Number.isNaN(taxaJuros) || taxaJuros < 0)) {
+        alert("Taxa inválida.");
+        renderizarListaInvestimentos();
+        return;
+    }
+
+    const ok = await atualizarTaxaJurosInvestimento(id, taxaJuros, periodoTaxa);
+    if (!ok) {
+        alert("Não foi possível salvar a taxa. Veja o console pra detalhes.");
+        return;
+    }
+
+    APP.investimentos = await buscarInvestimentos();
+    renderizarInvestimentos();
 }
 
 async function aoExcluirInvestimento(id) {

@@ -7,15 +7,20 @@
  * carteiras e, mês a mês, soma os ganhos esperados e subtrai as
  * saídas já previstas.
  *
- * Saída: despesas já cadastradas nesse mês (inclui parcelas futuras
- * já agendadas) mais uma estimativa das despesas fixas ativas que
- * ainda não foram lançadas naquele mês.
+ * Saída: despesas ainda não efetivadas nesse mês (inclui parcelas
+ * futuras já agendadas) mais uma estimativa das despesas fixas ativas
+ * que ainda não foram lançadas naquele mês. Despesa não-crédito já
+ * efetivada NÃO entra — ela já debitou a carteira de verdade (via
+ * trigger no banco), e por isso já está refletida no saldo atual usado
+ * como ponto de partida; contá-la nesse total de novo dobraria o
+ * efeito dela pro mês corrente (era o bug: o mês atual saía do zero,
+ * ignorando que salário/gasto já confirmados já estavam no saldo).
+ * Crédito é diferente: nunca debita na hora (só quando a fatura é paga,
+ * aba Cartões), então entra sempre, efetivada ou não.
  *
  * Entrada: só a estimativa dos salários ativos ainda não efetivados
  * naquele mês (ver aba Carteiras) — depósitos já efetivados NÃO
- * entram de novo aqui, porque já estão refletidos no saldo atual das
- * carteiras (todo depósito manual/efetivado ajusta o saldo na hora,
- * sem data futura, diferente de uma despesa parcelada no crédito).
+ * entram de novo aqui, pelo mesmo motivo acima (já estão no saldo atual).
  *
  * Não é fluxo de caixa exato (não modela fechamento/vencimento real
  * de fatura de cartão) — é só uma tendência aproximada.
@@ -35,10 +40,11 @@ function projetarSaldo(qtdMeses) {
 
     for (let i = 0; i < qtdMeses; i++) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
-        const chave = d.toISOString().slice(0, 7);
+        const chave = chaveMesLocal(d);
 
         const gastosReais = APP.despesas
             .filter(x => mesEfetivoDespesa(x) === chave)
+            .filter(x => x.formaPagamento === "crédito" || !x.efetivada)
             .reduce((soma, x) => soma + x.valor, 0);
 
         const estimativaFixas = APP.despesasFixas

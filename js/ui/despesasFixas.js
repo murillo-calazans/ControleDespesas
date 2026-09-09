@@ -24,12 +24,12 @@ function calcularProjecaoMensal() {
 
 function mediaGastosVariaveisUltimosMeses(qtdMeses) {
     const hoje = new Date();
-    const mesAtualChave = hoje.toISOString().slice(0, 7);
+    const mesAtualChave = chaveMesLocal(hoje);
 
     const mesesAlvo = [];
     for (let i = 1; i <= qtdMeses; i++) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-        mesesAlvo.push(d.toISOString().slice(0, 7));
+        mesesAlvo.push(chaveMesLocal(d));
     }
 
     const variaveis = APP.despesas.filter(d => !d.despesaFixaId && d.dataDespesa.slice(0, 7) !== mesAtualChave);
