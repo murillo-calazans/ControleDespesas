@@ -577,6 +577,12 @@ body.modo-app .botao-marcar-pago{
     text-align: right;
 }
 
+.erro-taxa-linha{
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--cor-erro);
+}
+
 .prefixo-moeda{
     position: relative;
     display: inline-flex;

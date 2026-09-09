@@ -131,12 +131,13 @@ function renderizarListaInvestimentos() {
                             <td class="valor-cell">${formatarMoeda(i.valor)}</td>
                             <td>
                                 <div class="celula-taxa-juros">
-                                    <input type="number" step="0.01" min="0" class="input-taxa-linha" data-id-investimento="${i.id}" value="${i.taxaJuros ?? ""}" placeholder="0,00">
+                                    <input type="text" inputmode="decimal" class="input-taxa-linha" data-id-investimento="${i.id}" value="${i.taxaJuros ?? ""}" placeholder="0,00">
                                     <select class="select-periodo-taxa-linha" data-id-investimento="${i.id}">
                                         <option value="mensal"${i.periodoTaxa !== "anual" ? " selected" : ""}>% ao mês</option>
                                         <option value="anual"${i.periodoTaxa === "anual" ? " selected" : ""}>% ao ano</option>
                                     </select>
                                 </div>
+                                <div class="erro-taxa-linha" data-id-investimento="${i.id}" hidden></div>
                             </td>
                             <td class="valor-cell">${rendimentoMensalEstimado(i) === null ? "-" : formatarMoeda(rendimentoMensalEstimado(i))}</td>
                             <td><button type="button" class="botao-excluir" data-id="${i.id}" title="Excluir">&times;</button></td>
@@ -160,24 +161,52 @@ function renderizarListaInvestimentos() {
     });
 }
 
+function mostrarErroTaxa(id, mensagem) {
+    const erro = document.querySelector(`.erro-taxa-linha[data-id-investimento="${id}"]`);
+    if (!erro) return;
+    erro.textContent = mensagem;
+    erro.hidden = false;
+}
+
+function limparErroTaxa(id) {
+    const erro = document.querySelector(`.erro-taxa-linha[data-id-investimento="${id}"]`);
+    if (erro) erro.hidden = true;
+}
+
 async function aoAlterarTaxaJurosInvestimento(id) {
     const input = document.querySelector(`.input-taxa-linha[data-id-investimento="${id}"]`);
     const select = document.querySelector(`.select-periodo-taxa-linha[data-id-investimento="${id}"]`);
     if (!input || !select) return;
 
-    const valorDigitado = input.value.trim();
-    const taxaJuros = valorDigitado === "" ? null : Number(valorDigitado);
-    const periodoTaxa = taxaJuros === null ? null : select.value;
+    limparErroTaxa(id);
 
-    if (taxaJuros !== null && (Number.isNaN(taxaJuros) || taxaJuros < 0)) {
-        alert("Taxa inválida.");
-        renderizarListaInvestimentos();
+    // Campo de texto solto (não type="number") de propósito: o input
+    // nativo de número tem comportamento inconsistente entre
+    // navegadores/idiomas com vírgula decimal (comum no Brasil — "0,8"),
+    // então a conversão vírgula -> ponto é feita aqui, manualmente,
+    // antes de qualquer parseFloat/Number.
+    const valorDigitado = input.value.trim().replace(",", ".");
+
+    if (valorDigitado === "") {
+        // Campo vazio = limpar a taxa configurada, não é erro.
+        await salvarTaxaJuros(id, null, null);
         return;
     }
 
+    const taxaJuros = Number(valorDigitado);
+
+    if (!Number.isFinite(taxaJuros) || taxaJuros < 0) {
+        mostrarErroTaxa(id, "Taxa inválida — use só números (ex.: 0,8).");
+        return;
+    }
+
+    await salvarTaxaJuros(id, taxaJuros, select.value);
+}
+
+async function salvarTaxaJuros(id, taxaJuros, periodoTaxa) {
     const ok = await atualizarTaxaJurosInvestimento(id, taxaJuros, periodoTaxa);
     if (!ok) {
-        alert("Não foi possível salvar a taxa. Veja o console pra detalhes.");
+        mostrarErroTaxa(id, "Não foi possível salvar a taxa. Veja o console pra detalhes.");
         return;
     }
 
