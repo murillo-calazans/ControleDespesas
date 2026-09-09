@@ -78,30 +78,32 @@ function renderizarListaInvestimentos() {
     }
 
     container.innerHTML = `
-        <table class="tabela-despesas">
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Descrição</th>
-                    <th>Conta</th>
-                    <th>Pessoa</th>
-                    <th>Valor</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${lista.map(i => `
+        <div class="tabela-scroll">
+            <table class="tabela-despesas">
+                <thead>
                     <tr>
-                        <td>${formatarDataBR(i.dataInvestimento)}</td>
-                        <td title="${escaparHtml(i.mensagemOriginal)}">${escaparHtml(i.descricao || i.mensagemOriginal)}</td>
-                        <td>${escaparHtml(i.conta || "-")}</td>
-                        <td>${escaparHtml(i.usuarioNome)}</td>
-                        <td class="valor-cell">${formatarMoeda(i.valor)}</td>
-                        <td><button type="button" class="botao-excluir" data-id="${i.id}" title="Excluir">&times;</button></td>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Conta</th>
+                        <th>Pessoa</th>
+                        <th>Valor</th>
+                        <th></th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${lista.map(i => `
+                        <tr>
+                            <td>${formatarDataBR(i.dataInvestimento)}</td>
+                            <td title="${escaparHtml(i.mensagemOriginal)}">${escaparHtml(i.descricao || i.mensagemOriginal)}</td>
+                            <td>${escaparHtml(i.conta || "-")}</td>
+                            <td>${escaparHtml(i.usuarioNome)}</td>
+                            <td class="valor-cell">${formatarMoeda(i.valor)}</td>
+                            <td><button type="button" class="botao-excluir" data-id="${i.id}" title="Excluir">&times;</button></td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `;
 
     container.querySelectorAll(".botao-excluir").forEach(botao => {

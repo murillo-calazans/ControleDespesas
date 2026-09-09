@@ -88,32 +88,34 @@ function renderizarListaDespesasFixas() {
     }
 
     container.innerHTML = `
-        <table class="tabela-despesas">
-            <thead>
-                <tr>
-                    <th>Descrição</th>
-                    <th>Categoria</th>
-                    <th>Valor</th>
-                    <th>Status</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${APP.despesasFixas.map(f => `
+        <div class="tabela-scroll">
+            <table class="tabela-despesas">
+                <thead>
                     <tr>
-                        <td>${escaparHtml(f.descricao || "-")}</td>
-                        <td>${escaparHtml(f.categoria)}</td>
-                        <td class="valor-cell">${formatarMoeda(f.valor)}</td>
-                        <td>
-                            <button type="button" class="botao-icone" data-toggle-id="${f.id}" data-ativa="${f.ativa}">
-                                ${f.ativa ? "⏸️ Pausar" : "▶️ Reativar"}
-                            </button>
-                        </td>
-                        <td><button type="button" class="botao-excluir" data-id="${f.id}" title="Excluir">&times;</button></td>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th></th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${APP.despesasFixas.map(f => `
+                        <tr>
+                            <td>${escaparHtml(f.descricao || "-")}</td>
+                            <td>${escaparHtml(f.categoria)}</td>
+                            <td class="valor-cell">${formatarMoeda(f.valor)}</td>
+                            <td>
+                                <button type="button" class="botao-icone" data-toggle-id="${f.id}" data-ativa="${f.ativa}">
+                                    ${f.ativa ? "⏸️ Pausar" : "▶️ Reativar"}
+                                </button>
+                            </td>
+                            <td><button type="button" class="botao-excluir" data-id="${f.id}" title="Excluir">&times;</button></td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `;
 
     container.querySelectorAll("[data-toggle-id]").forEach(botao => {

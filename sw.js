@@ -8,7 +8,7 @@
  * sempre vindo da rede.
  */
 
-const CACHE_NAME = "despesas-cache-v202609091100";
+const CACHE_NAME = "despesas-cache-v202609091530";
 
 const ARQUIVOS_ESTATICOS = [
     "./",

@@ -459,20 +459,22 @@ function renderizarDetalheFatura() {
             </div>
             ${lista.length === 0
                 ? '<p class="alerta-vazio">Nenhum gasto nessa fatura.</p>'
-                : `<table class="tabela-despesas">
-                    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pessoa</th><th>Valor</th></tr></thead>
-                    <tbody>
-                        ${lista.map(d => `
-                            <tr class="${d.virtual ? "linha-despesa-virtual" : classeLinhaBanco}"${d.virtual ? ' title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês"' : ""}>
-                                <td>${d.virtual ? "—" : formatarDataBR(d.dataDespesa)}</td>
-                                <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}${d.virtual ? ' <span class="badge-parcela">prevista</span>' : ""}</td>
-                                <td>${escaparHtml(d.categoria)}</td>
-                                <td>${escaparHtml(d.compartilhada ? "Ambos" : d.usuarioNome)}</td>
-                                <td class="valor-cell">${formatarMoeda(d.valorExibido)}</td>
-                            </tr>
-                        `).join("")}
-                    </tbody>
-                   </table>`
+                : `<div class="tabela-scroll">
+                    <table class="tabela-despesas">
+                        <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Pessoa</th><th>Valor</th></tr></thead>
+                        <tbody>
+                            ${lista.map(d => `
+                                <tr class="${d.virtual ? "linha-despesa-virtual" : classeLinhaBanco}"${d.virtual ? ' title="Despesa fixa ainda não lançada — entra de verdade no 5º dia útil do mês"' : ""}>
+                                    <td>${d.virtual ? "—" : formatarDataBR(d.dataDespesa)}</td>
+                                    <td>${escaparHtml(d.descricao || d.mensagemOriginal)}${d.parcelaTotal ? ` <span class="badge-parcela">${d.parcelaAtual}/${d.parcelaTotal}</span>` : ""}${d.compartilhada ? ' <span class="badge-parcela">ambos</span>' : ""}${d.virtual ? ' <span class="badge-parcela">prevista</span>' : ""}</td>
+                                    <td>${escaparHtml(d.categoria)}</td>
+                                    <td>${escaparHtml(d.compartilhada ? "Ambos" : d.usuarioNome)}</td>
+                                    <td class="valor-cell">${formatarMoeda(d.valorExibido)}</td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                   </div>`
             }
             ${!jaPaga && totalFatura > 0 ? '<button type="button" id="btnMarcarFaturaPaga" class="botao-primario">Marcar fatura como paga</button>' : ""}
         </div>

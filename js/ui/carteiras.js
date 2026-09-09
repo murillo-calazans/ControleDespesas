@@ -198,39 +198,41 @@ function renderizarMovimentos() {
     const rotulos = { deposito: "Depósito", retirada: "Retirada", ajuste: "Ajuste" };
 
     container.innerHTML = `
-        <table class="tabela-despesas">
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Tipo</th>
-                    <th>Descrição</th>
-                    <th>Registrado por</th>
-                    <th>Valor</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${lista.map(m => m.virtual ? `
-                    <tr class="linha-despesa-virtual" title="Salário ainda não confirmado esse mês">
-                        <td>—</td>
-                        <td>${rotulos[m.tipo] ?? m.tipo}</td>
-                        <td>${escaparHtml(m.descricao)} <span class="badge-parcela">não efetivado</span></td>
-                        <td>${escaparHtml(m.registradoPorNome)}</td>
-                        <td class="valor-cell">${formatarMoeda(m.valor)}</td>
-                        <td><button type="button" class="botao-icone" data-efetivar-salario="${m.salarioId}" data-usuario-id="${m.usuarioId}" data-valor="${m.valor}" title="Efetivar agora">✅ Efetivar</button></td>
-                    </tr>
-                ` : `
+        <div class="tabela-scroll">
+            <table class="tabela-despesas">
+                <thead>
                     <tr>
-                        <td>${formatarDataBR(m.criadoEm.slice(0, 10))}</td>
-                        <td>${rotulos[m.tipo] ?? m.tipo}</td>
-                        <td>${escaparHtml(m.descricao || "-")}</td>
-                        <td>${escaparHtml(m.registradoPorNome)}</td>
-                        <td class="valor-cell">${m.tipo === "retirada" ? "-" : ""}${formatarMoeda(m.valor)}</td>
-                        <td><button type="button" class="botao-excluir" data-id="${m.id}" title="Excluir">&times;</button></td>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>Registrado por</th>
+                        <th>Valor</th>
+                        <th></th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${lista.map(m => m.virtual ? `
+                        <tr class="linha-despesa-virtual" title="Salário ainda não confirmado esse mês">
+                            <td>—</td>
+                            <td>${rotulos[m.tipo] ?? m.tipo}</td>
+                            <td>${escaparHtml(m.descricao)} <span class="badge-parcela">não efetivado</span></td>
+                            <td>${escaparHtml(m.registradoPorNome)}</td>
+                            <td class="valor-cell">${formatarMoeda(m.valor)}</td>
+                            <td><button type="button" class="botao-icone" data-efetivar-salario="${m.salarioId}" data-usuario-id="${m.usuarioId}" data-valor="${m.valor}" title="Efetivar agora">✅ Efetivar</button></td>
+                        </tr>
+                    ` : `
+                        <tr>
+                            <td>${formatarDataBR(m.criadoEm.slice(0, 10))}</td>
+                            <td>${rotulos[m.tipo] ?? m.tipo}</td>
+                            <td>${escaparHtml(m.descricao || "-")}</td>
+                            <td>${escaparHtml(m.registradoPorNome)}</td>
+                            <td class="valor-cell">${m.tipo === "retirada" ? "-" : ""}${formatarMoeda(m.valor)}</td>
+                            <td><button type="button" class="botao-excluir" data-id="${m.id}" title="Excluir">&times;</button></td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `;
 
     container.querySelectorAll(".botao-excluir").forEach(botao => {

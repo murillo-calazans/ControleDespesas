@@ -71,20 +71,22 @@ function aoAbrirProjecao() {
     abrirModal(`
         <h2>📈 Projeção de saldo</h2>
         <p class="descricao-campo">Estimativa pros próximos 6 meses: saldo atual mais os salários ainda não efetivados, menos as saídas já previstas (parcelas já agendadas + despesas fixas ativas). Não inclui gastos ou ganhos novos que ainda vão surgir.</p>
-        <table class="tabela-despesas">
-            <thead>
-                <tr><th>Mês</th><th>Entrada estimada</th><th>Saída estimada</th><th>Saldo projetado</th></tr>
-            </thead>
-            <tbody>
-                ${linhas.map(l => `
-                    <tr>
-                        <td>${rotuloMes(l.mes)}</td>
-                        <td class="valor-cell">${formatarMoeda(l.entrada)}</td>
-                        <td class="valor-cell">${formatarMoeda(l.saida)}</td>
-                        <td class="valor-cell" style="color:${l.saldo < 0 ? "var(--cor-erro)" : "var(--cor-primaria)"}">${formatarMoeda(l.saldo)}</td>
-                    </tr>
-                `).join("")}
-            </tbody>
-        </table>
+        <div class="tabela-scroll">
+            <table class="tabela-despesas">
+                <thead>
+                    <tr><th>Mês</th><th>Entrada estimada</th><th>Saída estimada</th><th>Saldo projetado</th></tr>
+                </thead>
+                <tbody>
+                    ${linhas.map(l => `
+                        <tr>
+                            <td>${rotuloMes(l.mes)}</td>
+                            <td class="valor-cell">${formatarMoeda(l.entrada)}</td>
+                            <td class="valor-cell">${formatarMoeda(l.saida)}</td>
+                            <td class="valor-cell" style="color:${l.saldo < 0 ? "var(--cor-erro)" : "var(--cor-primaria)"}">${formatarMoeda(l.saldo)}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `);
 }
