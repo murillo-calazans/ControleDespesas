@@ -8,7 +8,7 @@
  * sempre vindo da rede.
  */
 
-const CACHE_NAME = "despesas-cache-v202609091530";
+const CACHE_NAME = "despesas-cache-v202609091600";
 
 const ARQUIVOS_ESTATICOS = [
     "./",
@@ -19,6 +19,7 @@ const ARQUIVOS_ESTATICOS = [
     "js/config/supabase.js",
     "js/core/state.js",
     "js/core/icones.js",
+    "js/core/tema.js",
     "js/core/app.js",
     "js/services/auth.js",
     "js/services/despesas.js",
@@ -28,6 +29,7 @@ const ARQUIVOS_ESTATICOS = [
     "js/services/despesasFixas.js",
     "js/services/insights.js",
     "js/ui/login.js",
+    "js/ui/perfil.js",
     "js/ui/modal.js",
     "js/ui/dashboard.js",
     "js/ui/resumo.js",

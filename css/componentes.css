@@ -70,6 +70,28 @@ body.modo-app .botao-marcar-pago{
     cursor: not-allowed;
 }
 
+.botao-secundario{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    background: var(--cor-fundo-elevado);
+    color: var(--cor-texto);
+    border: 1px solid var(--cor-borda);
+
+    padding: 10px 20px;
+    border-radius: var(--raio-botao);
+
+    font-size: 14px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.botao-secundario:hover{
+    background: var(--cor-borda);
+}
+
 .form-nova-despesa{
     display: flex;
     flex-wrap: wrap;
@@ -619,6 +641,48 @@ body.modo-app .botao-marcar-pago{
     padding: 8px 12px;
     font-size: 14px;
     width: 140px;
+}
+
+/* Modal de Perfil — dados da conta, troca de senha e tema. */
+.perfil-linha{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+}
+
+.perfil-linha + .perfil-linha{
+    border-top: 1px solid var(--cor-borda);
+}
+
+.perfil-rotulo{
+    font-size: 13px;
+    color: var(--cor-texto-suave);
+}
+
+.perfil-valor{
+    font-weight: 600;
+    text-align: right;
+}
+
+.perfil-senha-mascarada{
+    letter-spacing: .1em;
+}
+
+.perfil-acoes{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.perfil-acoes .botao-secundario{
+    width: 100%;
+}
+
+.perfil-form-senha{
+    margin-top: 12px;
 }
 
 .botao-excluir{

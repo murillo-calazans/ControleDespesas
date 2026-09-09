@@ -44,6 +44,42 @@
 
 }
 
+/* Tema escuro — mesma identidade (verde da marca + tom quente de
+   fundo), só invertendo o contraste. Aplicado via js/core/tema.js
+   (atributo data-theme no <html>), carregado antes do CSS pra não
+   piscar o tema errado. Sem preto puro — fundo verde-carvão bem
+   escuro, igual espírito do --cor-header já usado no claro. */
+:root[data-theme="escuro"]{
+
+    --cor-fundo: #131E17;
+    --cor-fundo-card: #1B291F;
+    --cor-fundo-elevado: #223027;
+    --cor-borda: #34453A;
+
+    --cor-texto: #EDEFE9;
+    --cor-texto-suave: #9CAA9F;
+
+    /* --cor-header fica igual ao claro — verde escuro saturado já lê
+       bem como faixa de marca em cima de qualquer um dos dois fundos. */
+    --cor-primaria: #2F6B45;
+    --cor-primaria-hover: #3C7F54;
+
+    --cor-erro: #F87171;
+    /* --cor-aviso fica igual ao claro — é usada como fundo sólido com
+       texto branco em cima (.aviso-modo-app); uma versão mais clara
+       perderia contraste com o texto. */
+    --cor-sucesso: #2F6B45;
+
+    --cor-sombra: rgba(0, 0, 0, 0.35);
+
+    --nubank-fundo: #2A2038;
+    --nubank-linha: rgba(107, 63, 160, 0.18);
+
+    --itau-fundo: #362514;
+    --itau-linha: rgba(180, 97, 28, 0.18);
+
+}
+
 body{
     background: var(--cor-fundo);
     color: var(--cor-texto);
@@ -96,6 +132,17 @@ header h1{
     display: flex;
     align-items: center;
     gap: 8px;
+
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border-radius: 10px;
+
+    cursor: pointer;
+    transition: .2s;
+}
+
+.header-usuario:hover{
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .avatar-usuario{
@@ -202,7 +249,7 @@ body.nao-autenticado .tela-login{
 
     padding: 32px;
 
-    background: #FFFFFF;
+    background: var(--cor-fundo-card);
     border-radius: var(--raio-card);
 }
 

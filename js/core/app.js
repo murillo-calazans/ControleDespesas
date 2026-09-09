@@ -31,6 +31,7 @@ async function iniciarSistema() {
     detectarModoApp();
     registrarServiceWorker();
     registrarLogin();
+    registrarPerfil();
     registrarModal();
     registrarDashboard();
     registrarAbas();

@@ -4,14 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Controle de Despesas</title>
-    <link rel="stylesheet" href="css/style.css?v=202609091100">
-    <link rel="stylesheet" href="css/componentes.css?v=202609091100">
     <link rel="manifest" href="manifest.json?v=202609081745">
     <meta name="theme-color" content="#163A26">
     <link rel="apple-touch-icon" href="icons/icon-180x180.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Despesas">
+    <!-- Aplica o tema salvo antes do CSS pintar a tela, pra não piscar
+         claro-e-depois-escuro em quem já escolheu o modo escuro. Vem
+         depois da meta theme-color acima (pra já achar ela no DOM e
+         poder ajustar a cor da barra de status) e antes dos <link
+         rel="stylesheet"> abaixo (pra já achar o atributo no <html>
+         quando o CSS for aplicado). -->
+    <script src="js/core/tema.js?v=202609091600"></script>
+    <link rel="stylesheet" href="css/style.css?v=202609091600">
+    <link rel="stylesheet" href="css/componentes.css?v=202609091600">
 </head>
 <body class="nao-autenticado">
 
@@ -40,7 +47,7 @@
             <h1>Controle de Despesas</h1>
         </div>
         <div class="header-utilitarios">
-            <div class="header-usuario">
+            <div id="headerUsuario" class="header-usuario" title="Perfil">
                 <span id="avatarUsuario" class="avatar-usuario"></span>
                 <span id="usuarioLogado" class="usuario-logado"></span>
                 <span class="header-usuario-seta">⌄</span>
@@ -231,6 +238,7 @@
     <script src="js/services/despesasFixas.js?v=202609081200"></script>
     <script src="js/services/insights.js?v=202609081200"></script>
     <script src="js/ui/login.js?v=202609081200"></script>
+    <script src="js/ui/perfil.js?v=202609091600"></script>
     <script src="js/ui/modal.js?v=202609081200"></script>
     <script src="js/ui/dashboard.js?v=202609081820"></script>
     <script src="js/ui/resumo.js?v=202609081200"></script>
@@ -241,7 +249,7 @@
     <script src="js/ui/cartoes.js?v=202609091530"></script>
     <script src="js/ui/investimentos.js?v=202609091530"></script>
     <script src="js/ui/despesasFixas.js?v=202609091530"></script>
-    <script src="js/core/app.js?v=202609081750"></script>
+    <script src="js/core/app.js?v=202609091600"></script>
 
 </body>
 </html>
