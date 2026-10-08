@@ -35,6 +35,7 @@ async function iniciarSistema() {
     registrarModal();
     registrarDashboard();
     registrarAbas();
+    registrarMesGlobal();
     registrarCarteiras();
     registrarCartoes();
     registrarInvestimentos();

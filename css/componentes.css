@@ -713,6 +713,81 @@ body.modo-app .botao-marcar-pago{
     margin-top: 12px;
 }
 
+.perfil-cores{
+    display: flex;
+    gap: 8px;
+}
+
+.perfil-cor{
+    padding: 6px 14px;
+    border: 2px solid var(--cor-borda);
+    border-radius: var(--raio-botao);
+    background: var(--cor-fundo-elevado);
+    color: var(--cor-texto);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Borda na cor real de cada opção (não na --cor-primaria atual), pra
+   dar pra ver como fica antes de escolher. */
+.perfil-cor-verde.perfil-cor-ativa{ border-color: #2F6B45; }
+.perfil-cor-rosa.perfil-cor-ativa{ border-color: #C2477A; }
+
+/* Barra do mês global — "‹ Outubro 2026 ›" logo abaixo do header,
+   vale pra todas as abas (ver js/ui/mesGlobal.js). */
+.barra-mes-global{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px 24px 0;
+}
+
+body.nao-autenticado .barra-mes-global{
+    display: none;
+}
+
+.botao-mes-global{
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 50%;
+    background: var(--cor-fundo-card);
+    color: var(--cor-texto);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.botao-mes-global:hover{
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+}
+
+.rotulo-mes-global{
+    min-width: 170px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--raio-botao);
+    background: transparent;
+    color: var(--cor-texto);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: default;
+}
+
+/* Fora do mês atual: sublinhado na cor da marca, clicável pra voltar. */
+.rotulo-mes-global.mes-global-fora-do-atual{
+    color: var(--cor-primaria);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    cursor: pointer;
+}
+
 .botao-excluir{
     width: 26px;
     height: 26px;
@@ -980,6 +1055,7 @@ body.modo-app .botao-marcar-pago{
     .abas-pill button[data-aba="cartoes"]::before{ content: "💳"; }
     .abas-pill button[data-aba="fixas"]::before{ content: "📌"; }
     .abas-pill button[data-aba="investimentos"]::before{ content: "📈"; }
+    .abas-pill button[data-aba="casal"]::before{ content: "💑"; }
 
     /* Cartões e KPIs — menos respiro interno pra aproveitar a largura
        estreita da tela. */

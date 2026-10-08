@@ -80,6 +80,51 @@
 
 }
 
+/* Cor de destaque rosa — escolhida no Perfil, independente do
+   claro/escuro (atributo data-accent no <html>, ver js/core/tema.js).
+   Troca a marca (header, primária) e tinge levemente os fundos; erro,
+   aviso e as cores dos bancos ficam iguais. --cor-sucesso continua
+   verde pra "pago/ok" não virar rosa (que lê como alerta). */
+:root[data-accent="rosa"]{
+
+    --cor-fundo: #F8EEF1;
+    --cor-fundo-card: #FFFFFF;
+    --cor-fundo-elevado: #FBF2F5;
+    --cor-borda: #EED9E0;
+
+    --cor-texto: #2A1B21;
+    --cor-texto-suave: #7A6870;
+
+    --cor-header: #5A1A35;
+    --cor-primaria: #B23266;
+    --cor-primaria-hover: #962654;
+
+    --cor-sucesso: #1F7A47;
+
+    --cor-sombra: rgba(42, 27, 33, 0.08);
+
+}
+
+:root[data-theme="escuro"][data-accent="rosa"]{
+
+    --cor-fundo: #1E1418;
+    --cor-fundo-card: #2A1C22;
+    --cor-fundo-elevado: #33232A;
+    --cor-borda: #4A3540;
+
+    --cor-texto: #F3E9ED;
+    --cor-texto-suave: #B49CA6;
+
+    --cor-header: #4A1530;
+    --cor-primaria: #C2477A;
+    --cor-primaria-hover: #D35A8B;
+
+    --cor-sucesso: #2F8A57;
+
+    --cor-sombra: rgba(0, 0, 0, 0.35);
+
+}
+
 body{
     background: var(--cor-fundo);
     color: var(--cor-texto);

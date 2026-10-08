@@ -2,8 +2,9 @@
  * ==========================================================
  * UI de Resumo
  * ==========================================================
- * Visão geral do casal: saldo total das carteiras, saldo por pessoa,
- * gasto do mês atual, compromisso fixo mensal e total investido. Só
+ * Visão de quem está logado: saldo total do casal + o próprio saldo, e
+ * a SUA parte (ver minhaParte em js/core/pessoa.js) do gasto do mês global
+ * (js/ui/mesGlobal.js), do compromisso fixo e do investido. Só
  * lê de APP (já carregado pelas outras abas em inicializarDadosAutenticado)
  * — sem fetch próprio, sem formulário.
  */
@@ -13,14 +14,16 @@ function renderizarResumo() {
     if (!container) return;
 
     const saldoTotal = APP.carteiras.reduce((soma, c) => soma + c.saldo, 0);
+    // Só a carteira de quem está logado — a do parceiro fica pra aba Casal.
+    const carteira = minhaCarteira();
 
-    const mesAtualChave = chaveMesLocal(new Date());
-    const gastoMes = APP.despesas
-        .filter(d => mesEfetivoDespesa(d) === mesAtualChave)
-        .reduce((soma, d) => soma + d.valor, 0);
+    const gastoMes = gastosDoMes(APP.mesGlobal).reduce((soma, d) => soma + minhaParte(d), 0);
 
-    const totalFixas = APP.despesasFixas.filter(f => f.ativa).reduce((soma, f) => soma + f.valor, 0);
-    const totalInvestido = APP.investimentos.reduce((soma, i) => soma + i.valor, 0);
+    const totalFixas = APP.despesasFixas.filter(f => f.ativa).reduce((soma, f) => soma + minhaParte(f), 0);
+    // Mesmo critério da aba Investimentos: acumulado até o mês global.
+    const totalInvestido = APP.investimentos
+        .filter(i => ehMeu(i) && i.dataInvestimento.slice(0, 7) <= APP.mesGlobal)
+        .reduce((soma, i) => soma + i.valor, 0);
 
     container.innerHTML = `
         <div class="stat-tile stat-tile-destaque">
@@ -28,26 +31,27 @@ function renderizarResumo() {
             <div class="stat-label">Saldo total</div>
             <div class="stat-valor">${formatarMoeda(saldoTotal)}</div>
         </div>
-        ${APP.carteiras.map((c, indice) => `
+        ${carteira ? `
             <div class="stat-tile">
-                ${statIconePessoa(c.usuarioNome, indice)}
-                <div class="stat-label">Saldo de ${escaparHtml(c.usuarioNome)}</div>
-                <div class="stat-valor">${formatarMoeda(c.saldo)}</div>
+                ${statIconePessoa(carteira.usuarioNome, APP.carteiras.indexOf(carteira))}
+                <div class="stat-label">Meu saldo</div>
+                <div class="stat-valor">${formatarMoeda(carteira.saldo)}</div>
             </div>
-        `).join("")}
+        ` : ""}
         <div class="stat-tile">
             ${statIcone("🧾", "azul")}
-            <div class="stat-label">Gasto de ${rotuloMes(mesAtualChave)}</div>
+            <div class="stat-label">Meu gasto em ${rotuloMes(APP.mesGlobal)}</div>
             <div class="stat-valor">${formatarMoeda(gastoMes)}</div>
+            <div class="stat-sublinha">Com metade das "Ambos" e as fixas previstas</div>
         </div>
         <div class="stat-tile">
             ${statIcone("🔁", "laranja")}
-            <div class="stat-label">Compromisso fixo mensal</div>
+            <div class="stat-label">Meu compromisso fixo</div>
             <div class="stat-valor">${formatarMoeda(totalFixas)}</div>
         </div>
         <div class="stat-tile">
             ${statIcone("📊", "roxo")}
-            <div class="stat-label">Total investido</div>
+            <div class="stat-label">Meu total investido</div>
             <div class="stat-valor">${formatarMoeda(totalInvestido)}</div>
         </div>
     `;

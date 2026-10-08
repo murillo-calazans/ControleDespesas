@@ -3,8 +3,9 @@
  * UI de Projeção de Saldo
  * ==========================================================
  * Estimativa simples dos próximos meses, 100% client-side (sem IA,
- * sem fetch próprio — só lê de APP): parte do saldo atual das
- * carteiras e, mês a mês, soma os ganhos esperados e subtrai as
+ * sem fetch próprio — só lê de APP), na visão de quem está logado:
+ * parte do saldo atual da PRÓPRIA carteira e, só com a parte dele de
+ * cada despesa (minhaParte em js/core/pessoa.js), mês a mês, soma os ganhos esperados e subtrai as
  * saídas já previstas.
  *
  * Saída: despesas ainda não efetivadas nesse mês (inclui parcelas
@@ -32,7 +33,7 @@ function registrarProjecao() {
 }
 
 function projetarSaldo(qtdMeses) {
-    const saldoAtual = APP.carteiras.reduce((soma, c) => soma + c.saldo, 0);
+    const saldoAtual = minhaCarteira()?.saldo ?? 0;
     const hoje = new Date();
 
     const linhas = [];
@@ -45,17 +46,17 @@ function projetarSaldo(qtdMeses) {
         const gastosReais = APP.despesas
             .filter(x => mesEfetivoDespesa(x) === chave)
             .filter(x => x.formaPagamento === "crédito" || !x.efetivada)
-            .reduce((soma, x) => soma + x.valor, 0);
+            .reduce((soma, x) => soma + minhaParte(x), 0);
 
         const estimativaFixas = APP.despesasFixas
             .filter(f => f.ativa)
             .reduce((soma, f) => {
                 const jaLancada = APP.despesas.some(x => x.despesaFixaId === f.id && x.dataDespesa.slice(0, 7) === chave);
-                return jaLancada ? soma : soma + f.valor;
+                return jaLancada ? soma : soma + minhaParte(f);
             }, 0);
 
         const estimativaSalarios = APP.salarios
-            .filter(s => s.ativo)
+            .filter(s => ehMeu(s) && s.ativo)
             .reduce((soma, s) => {
                 const jaEfetivado = APP.movimentosCarteira.some(m => m.salarioId === s.id && m.criadoEm.slice(0, 7) === chave);
                 return jaEfetivado ? soma : soma + s.valor;
@@ -76,7 +77,7 @@ function aoAbrirProjecao() {
 
     abrirModal(`
         <h2>📈 Projeção de saldo</h2>
-        <p class="descricao-campo">Estimativa pros próximos 6 meses: saldo atual mais os salários ainda não efetivados, menos as saídas já previstas (parcelas já agendadas + despesas fixas ativas). Não inclui gastos ou ganhos novos que ainda vão surgir.</p>
+        <p class="descricao-campo">Estimativa pros próximos 6 meses, só da sua carteira: seu saldo atual mais os salários ainda não efetivados, menos as saídas já previstas (parcelas já agendadas + despesas fixas ativas). Não inclui gastos ou ganhos novos que ainda vão surgir.</p>
         <div class="tabela-scroll">
             <table class="tabela-despesas">
                 <thead>

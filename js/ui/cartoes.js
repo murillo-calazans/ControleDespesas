@@ -3,8 +3,8 @@
  * UI de Cartões de Crédito
  * ==========================================================
  * Cadastro de cartão + fatura por ciclo de fechamento real (não mês
- * civil): clica num cartão, vê a fatura da competência atual, navega
- * entre meses, marca como paga (debita a carteira de cada um pela
+ * civil): clica num cartão, vê a fatura da competência do mês global
+ * (js/ui/mesGlobal.js), navega entre meses (muda o mês do app todo), marca como paga (debita a carteira de cada um pela
  * parte que é dela — "ambos" divide ao meio — via trigger). Quem
  * decide em qual fatura uma despesa cai é sempre o fechamento — o
  * vencimento é só a data de pagamento, não influencia o agrupamento
@@ -12,22 +12,13 @@
  */
 
 let cartaoSelecionadoId = null;
-let competenciaSelecionada = null; // "YYYY-MM"
 let pagamentosFaturaCache = [];
-let pessoaFaturaSelecionada = null; // null = "Total" (todo mundo); senão, usuarioId
+let pessoaFaturaSelecionada = null; // null = "Total" (fatura inteira); senão, usuarioId (sempre quem está logado)
 let cartaoEditandoId = null; // cartão com o form de fechamento/vencimento aberto
 
 function registrarCartoes() {
     const form = document.getElementById("formNovoCartao");
     if (form) form.addEventListener("submit", aoCriarCartao);
-
-    const btnAnterior = document.getElementById("btnFaturaAnterior");
-    const btnProxima = document.getElementById("btnFaturaProxima");
-    if (btnAnterior) btnAnterior.addEventListener("click", () => mudarCompetencia(-1));
-    if (btnProxima) btnProxima.addEventListener("click", () => mudarCompetencia(1));
-
-    const btnMarcarPaga = document.getElementById("btnMarcarFaturaPaga");
-    if (btnMarcarPaga) btnMarcarPaga.addEventListener("click", aoMarcarFaturaPaga);
 }
 
 async function aoCriarCartao(evento) {
@@ -150,7 +141,8 @@ function despesasDaFaturaPorPessoa(cartao, competencia, usuarioId) {
 
 /** Todas as competências ("YYYY-MM") com gasto nesse cartão — passadas
  *  e futuras (parcelas já agendadas aparecem aqui mesmo antes de a
- *  fatura fechar) — mais a competência atual, mesmo sem gasto ainda. */
+ *  fatura fechar) — mais a competência atual e a do mês global, mesmo
+ *  sem gasto ainda. */
 function competenciasDoCartao(cartao) {
     const hojeISO = new Date().toISOString().slice(0, 10);
     const chaves = new Set(
@@ -159,6 +151,7 @@ function competenciasDoCartao(cartao) {
             .map(d => competenciaFatura(d.dataDespesa, diaCorteFatura(cartao)))
     );
     chaves.add(competenciaFatura(hojeISO, diaCorteFatura(cartao)));
+    chaves.add(APP.mesGlobal);
     return [...chaves].sort();
 }
 
@@ -167,17 +160,9 @@ async function selecionarCartao(cartaoId) {
     const cartao = APP.cartoes.find(c => String(c.id) === String(cartaoId));
     if (!cartao) return;
 
-    const hojeISO = new Date().toISOString().slice(0, 10);
-    competenciaSelecionada = competenciaFatura(hojeISO, diaCorteFatura(cartao));
-    pessoaFaturaSelecionada = APP.usuario.id;
+    pessoaFaturaSelecionada = meuId();
 
     pagamentosFaturaCache = await buscarFaturaPagamentos(cartaoId);
-    renderizarDetalheFatura();
-}
-
-function mudarCompetencia(delta) {
-    if (!competenciaSelecionada) return;
-    competenciaSelecionada = somarMesACompetencia(competenciaSelecionada, delta);
     renderizarDetalheFatura();
 }
 
@@ -188,11 +173,11 @@ async function aoMarcarFaturaPaga() {
     // Só as despesas reais entram no pagamento — as "previstas" (fixas
     // ainda não lançadas) só aparecem pra planejamento, não dá pra
     // pagar uma cobrança que ainda não existe de verdade.
-    const lista = despesasDaFatura(cartao, competenciaSelecionada).filter(d => !d.virtual);
+    const lista = despesasDaFatura(cartao, APP.mesGlobal).filter(d => !d.virtual);
     const total = lista.reduce((soma, d) => soma + d.valor, 0);
     if (total <= 0) return;
 
-    if (!confirm(`Marcar a fatura de ${rotuloCompetencia(competenciaSelecionada)} (${formatarMoeda(total)}) como paga? Isso vai descontar de cada carteira a parte que é dela (despesas "ambos" dividem ao meio).`)) {
+    if (!confirm(`Marcar a fatura de ${rotuloCompetencia(APP.mesGlobal)} (${formatarMoeda(total)}) como paga? Isso vai descontar de cada carteira a parte que é dela (despesas "ambos" dividem ao meio).`)) {
         return;
     }
 
@@ -201,7 +186,7 @@ async function aoMarcarFaturaPaga() {
 
     const ok = await marcarFaturaPaga({
         cartaoId: cartao.id,
-        competencia: `${competenciaSelecionada}-01`,
+        competencia: `${APP.mesGlobal}-01`,
         valorPago: total
     });
 
@@ -239,16 +224,14 @@ async function aoExcluirCartao(id) {
     popularFormaPagamentoNovaDespesa();
 }
 
-/** Total da fatura atual de cada cartão, do ponto de vista de uma
+/** Total da fatura do mês global de cada cartão, do ponto de vista de uma
  *  pessoa (valor cheio do que é dela + metade do que é "ambos"),
  *  somado entre todos os cartões — é o "gasto total de crédito" da
  *  pessoa nesse ciclo, juntando Nubank e Itaú. Sem usuarioId, soma o
  *  valor cheio de todo mundo (visão "Total dos cartões"). */
 function totalCreditoPorPessoa(usuarioId) {
-    const hojeISO = new Date().toISOString().slice(0, 10);
     return APP.cartoes.reduce((soma, c) => {
-        const competenciaAtual = competenciaFatura(hojeISO, diaCorteFatura(c));
-        return soma + despesasDaFaturaPorPessoa(c, competenciaAtual, usuarioId).reduce((s, d) => s + d.valorExibido, 0);
+        return soma + despesasDaFaturaPorPessoa(c, APP.mesGlobal, usuarioId).reduce((s, d) => s + d.valorExibido, 0);
     }, 0);
 }
 
@@ -261,23 +244,14 @@ function renderizarKpisCartoes() {
         return;
     }
 
-    const totalGeral = totalCreditoPorPessoa(null);
-
+    // Só a minha parte — o total dos cartões do casal fica na aba Casal.
     container.innerHTML = `
         <div class="stat-tile stat-tile-destaque">
             ${statIcone("💳", "azul")}
-            <div class="stat-label">Total dos cartões</div>
-            <div class="stat-valor">${formatarMoeda(totalGeral)}</div>
-            <div class="stat-sublinha">Soma das faturas atuais de todos os cartões</div>
+            <div class="stat-label">Meu crédito em ${rotuloCompetencia(APP.mesGlobal)}</div>
+            <div class="stat-valor">${formatarMoeda(totalCreditoPorPessoa(meuId()))}</div>
+            <div class="stat-sublinha">Minha parte em todas as faturas, com metade do "ambos"</div>
         </div>
-        ${APP.carteiras.map((c, indice) => `
-            <div class="stat-tile">
-                ${statIconePessoa(c.usuarioNome, indice)}
-                <div class="stat-label">${escaparHtml(c.usuarioNome)}</div>
-                <div class="stat-valor">${formatarMoeda(totalCreditoPorPessoa(c.usuarioId))}</div>
-                <div class="stat-sublinha">Nas duas faturas, com metade do "ambos"</div>
-            </div>
-        `).join("")}
     `;
 }
 
@@ -314,9 +288,8 @@ function renderizarCartoes() {
             `;
         }
 
-        const hojeISO = new Date().toISOString().slice(0, 10);
-        const competenciaAtual = competenciaFatura(hojeISO, diaCorteFatura(c));
-        const total = despesasDaFatura(c, competenciaAtual).reduce((soma, d) => soma + d.valor, 0);
+        const total = despesasDaFatura(c, APP.mesGlobal).reduce((soma, d) => soma + d.valor, 0);
+        const minhaParteFatura = despesasDaFaturaPorPessoa(c, APP.mesGlobal, meuId()).reduce((soma, d) => soma + d.valorExibido, 0);
         const banco = identificarBanco(c.nome);
         const classeBanco = banco ? ` stat-tile-banco stat-tile-${banco}` : "";
         return `
@@ -325,8 +298,9 @@ function renderizarCartoes() {
                 <button type="button" class="botao-excluir" data-excluir-cartao-id="${c.id}" title="Excluir cartão">&times;</button>
                 ${statIconeBanco(c.nome)}
                 <div class="stat-label">${escaparHtml(c.nome)} · ${escaparHtml(c.usuarioNome)}</div>
-                <div class="stat-valor">${formatarMoeda(total)}</div>
-                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(competenciaAtual)} · fecha dia ${c.diaFechamento}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</div>
+                <div class="stat-valor">${formatarMoeda(minhaParteFatura)}</div>
+                <div class="stat-sublinha">Minha parte · fatura inteira ${formatarMoeda(total)}</div>
+                <div class="stat-sublinha">Fatura de ${rotuloCompetencia(APP.mesGlobal)} · fecha dia ${c.diaFechamento}${c.diaVencimento ? ` · vence dia ${c.diaVencimento}` : ""}</div>
             </div>
         `;
     }).join("");
@@ -396,29 +370,21 @@ function renderizarDetalheFatura() {
         return;
     }
 
-    const listaTotal = despesasDaFatura(cartao, competenciaSelecionada);
+    const listaTotal = despesasDaFatura(cartao, APP.mesGlobal);
     const totalFatura = listaTotal.reduce((soma, d) => soma + d.valor, 0);
-    const lista = despesasDaFaturaPorPessoa(cartao, competenciaSelecionada, pessoaFaturaSelecionada);
-    const totalExibido = lista.reduce((soma, d) => soma + d.valorExibido, 0);
+    const lista = despesasDaFaturaPorPessoa(cartao, APP.mesGlobal, pessoaFaturaSelecionada);
     const banco = identificarBanco(cartao.nome);
     const classeLinhaBanco = banco ? ` linha-banco-${banco}` : "";
-    const jaPaga = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === competenciaSelecionada);
+    const jaPaga = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === APP.mesGlobal);
     const competencias = competenciasDoCartao(cartao);
 
-    // Um botão por pessoa (as duas do casal) — cada um já mostra o
-    // valor daquela visão nessa fatura: despesas dela (valor cheio) +
-    // metade das compartilhadas ("ambos" divide entre as duas).
-    const opcoesPessoa = APP.carteiras.map(c => ({
-        id: c.usuarioId,
-        nome: c.usuarioNome,
-        valor: despesasDaFaturaPorPessoa(cartao, competenciaSelecionada, c.usuarioId).reduce((soma, d) => soma + d.valorExibido, 0)
-    }));
+    const minhaParteFatura = despesasDaFaturaPorPessoa(cartao, APP.mesGlobal, meuId()).reduce((soma, d) => soma + d.valorExibido, 0);
 
     container.innerHTML = `
         <div class="cartao">
             <div class="filtros-linha">
                 <button type="button" id="btnFaturaAnterior" class="botao-icone">‹</button>
-                <h3>${escaparHtml(cartao.nome)} — Fatura de ${rotuloCompetencia(competenciaSelecionada)}</h3>
+                <h3>${escaparHtml(cartao.nome)} — Fatura de ${rotuloCompetencia(APP.mesGlobal)}</h3>
                 <button type="button" id="btnFaturaProxima" class="botao-icone">›</button>
             </div>
             <div class="tira-competencias">
@@ -426,7 +392,7 @@ function renderizarDetalheFatura() {
                     const totalComp = despesasDaFatura(cartao, comp).reduce((soma, d) => soma + d.valor, 0);
                     const pagaComp = pagamentosFaturaCache.some(p => p.competencia.slice(0, 7) === comp);
                     return `
-                        <button type="button" class="pill-competencia${comp === competenciaSelecionada ? " pill-competencia-ativa" : ""}" data-competencia="${comp}">
+                        <button type="button" class="pill-competencia${comp === APP.mesGlobal ? " pill-competencia-ativa" : ""}" data-competencia="${comp}">
                             <span class="pill-competencia-mes">${rotuloCompetencia(comp)}</span>
                             <span class="pill-competencia-valor">${formatarMoeda(totalComp)}</span>
                             ${pagaComp ? '<span class="pill-competencia-paga">✓ paga</span>' : ""}
@@ -434,28 +400,19 @@ function renderizarDetalheFatura() {
                     `;
                 }).join("")}
             </div>
-            <div class="tira-competencias">
-                ${opcoesPessoa.map(op => `
-                    <button type="button" class="pill-competencia${op.id === pessoaFaturaSelecionada ? " pill-competencia-ativa" : ""}" data-pessoa-fatura="${op.id}">
-                        <span class="pill-competencia-mes">${escaparHtml(op.nome)}</span>
-                        <span class="pill-competencia-valor">${formatarMoeda(op.valor)}</span>
-                    </button>
-                `).join("")}
-            </div>
             <div class="kpi-grid">
                 <div class="stat-tile cartao-clicavel${!pessoaFaturaSelecionada ? " stat-tile-destaque" : ""}" data-selecionar-total>
                     ${statIcone("🧾", "azul")}
                     <div class="stat-label">Total da fatura</div>
                     <div class="stat-valor">${formatarMoeda(totalFatura)}</div>
-                    <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"} · clique pra ver os dois juntos</div>
+                    <div class="stat-sublinha">${jaPaga ? "✅ Paga" : "Em aberto"} · clique pra ver a fatura inteira</div>
                 </div>
-                ${pessoaFaturaSelecionada ? `
-                <div class="stat-tile">
-                    ${statIconePessoa(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "", opcoesPessoa.findIndex(op => op.id === pessoaFaturaSelecionada))}
-                    <div class="stat-label">Fatura de ${escaparHtml(opcoesPessoa.find(op => op.id === pessoaFaturaSelecionada)?.nome ?? "")}</div>
-                    <div class="stat-valor">${formatarMoeda(totalExibido)}</div>
+                <div class="stat-tile cartao-clicavel${pessoaFaturaSelecionada ? " stat-tile-destaque" : ""}" data-selecionar-minha-parte>
+                    ${statIconePessoa(APP.usuario.nome, APP.carteiras.indexOf(minhaCarteira()))}
+                    <div class="stat-label">Minha parte</div>
+                    <div class="stat-valor">${formatarMoeda(minhaParteFatura)}</div>
+                    <div class="stat-sublinha">minhas + metade do "ambos"</div>
                 </div>
-                ` : ""}
             </div>
             ${lista.length === 0
                 ? '<p class="alerta-vazio">Nenhum gasto nessa fatura.</p>'
@@ -483,20 +440,17 @@ function renderizarDetalheFatura() {
     const btnAnterior = document.getElementById("btnFaturaAnterior");
     const btnProxima = document.getElementById("btnFaturaProxima");
     const btnMarcarPaga = document.getElementById("btnMarcarFaturaPaga");
-    if (btnAnterior) btnAnterior.addEventListener("click", () => mudarCompetencia(-1));
-    if (btnProxima) btnProxima.addEventListener("click", () => mudarCompetencia(1));
+    if (btnAnterior) btnAnterior.addEventListener("click", () => mudarMesGlobal(-1));
+    if (btnProxima) btnProxima.addEventListener("click", () => mudarMesGlobal(1));
     if (btnMarcarPaga) btnMarcarPaga.addEventListener("click", aoMarcarFaturaPaga);
 
     container.querySelectorAll("[data-competencia]").forEach(pill => {
-        pill.addEventListener("click", () => {
-            competenciaSelecionada = pill.dataset.competencia;
-            renderizarDetalheFatura();
-        });
+        pill.addEventListener("click", () => definirMesGlobal(pill.dataset.competencia));
     });
 
-    container.querySelectorAll("[data-pessoa-fatura]").forEach(pill => {
-        pill.addEventListener("click", () => {
-            pessoaFaturaSelecionada = pill.dataset.pessoaFatura || null;
+    container.querySelectorAll("[data-selecionar-minha-parte]").forEach(tile => {
+        tile.addEventListener("click", () => {
+            pessoaFaturaSelecionada = meuId();
             renderizarDetalheFatura();
         });
     });

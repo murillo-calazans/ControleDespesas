@@ -22,4 +22,8 @@ function selecionarAba(aba) {
     document.querySelectorAll("[data-aba-conteudo]").forEach(elemento => {
         elemento.hidden = elemento.dataset.abaConteudo !== aba;
     });
+
+    // Casal só lê de APP — renderiza ao abrir pra sempre pegar o que as
+    // outras abas acabaram de mudar (ver js/ui/casal.js).
+    if (aba === "casal" && APP.status.autenticado) renderizarCasal();
 }

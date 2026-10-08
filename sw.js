@@ -8,7 +8,7 @@
  * sempre vindo da rede.
  */
 
-const CACHE_NAME = "despesas-cache-v202609092230";
+const CACHE_NAME = "despesas-cache-v202610081400";
 
 const ARQUIVOS_ESTATICOS = [
     "./",
@@ -18,6 +18,7 @@ const ARQUIVOS_ESTATICOS = [
     "css/componentes.css",
     "js/config/supabase.js",
     "js/core/state.js",
+    "js/core/pessoa.js",
     "js/core/icones.js",
     "js/core/tema.js",
     "js/core/app.js",
@@ -36,8 +37,10 @@ const ARQUIVOS_ESTATICOS = [
     "js/ui/projecao.js",
     "js/ui/insights.js",
     "js/ui/abas.js",
+    "js/ui/mesGlobal.js",
     "js/ui/carteiras.js",
     "js/ui/cartoes.js",
+    "js/ui/casal.js",
     "js/ui/investimentos.js",
     "js/ui/despesasFixas.js",
     "icons/icon-192x192.png",

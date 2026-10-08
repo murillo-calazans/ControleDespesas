@@ -2,22 +2,14 @@
  * ==========================================================
  * UI de Carteiras
  * ==========================================================
- * Saldo por pessoa (vindo de APP.carteiras, mantido pelo banco via
- * trigger) + formulário de depósito/retirada/ajuste manual + histórico.
+ * Saldo de quem está logado (vindo de APP.carteiras, mantido pelo banco
+ * via trigger) + formulário de depósito/retirada/ajuste manual +
+ * histórico — só a própria carteira; a do parceiro fica na aba Casal.
  */
-
-let filtroMesCarteiras = null; // "YYYY-MM" ou null (todos os meses)
-let filtroMesCarteirasInicializado = false; // já aplicou o padrão (mês atual)?
 
 function registrarCarteiras() {
     const form = document.getElementById("formMovimentoCarteira");
     if (form) form.addEventListener("submit", aoRegistrarMovimento);
-
-    const filtroMes = document.getElementById("filtroMesCarteiras");
-    if (filtroMes) filtroMes.addEventListener("change", () => {
-        filtroMesCarteiras = filtroMes.value || null;
-        renderizarMovimentos();
-    });
 }
 
 async function aoRegistrarMovimento(evento) {
@@ -54,7 +46,6 @@ function renderizarCarteiras() {
     renderizarKpisCarteiras();
     renderizarSelectCarteiras();
     renderizarSalarios();
-    popularFiltroMesCarteiras();
     renderizarMovimentos();
 }
 
@@ -62,7 +53,7 @@ function renderizarSalarios() {
     const container = document.getElementById("listaSalarios");
     if (!container) return;
 
-    container.innerHTML = APP.carteiras.map(c => {
+    container.innerHTML = APP.carteiras.filter(ehMeu).map(c => {
         const salario = APP.salarios.find(s => String(s.usuarioId) === String(c.usuarioId));
 
         return `
@@ -110,25 +101,6 @@ async function aoTogglarSalario(id, ativoAtual) {
     renderizarSalarios();
 }
 
-function popularFiltroMesCarteiras() {
-    const select = document.getElementById("filtroMesCarteiras");
-    if (!select) return;
-
-    // Mesma lógica do filtro de mês das despesas (ver popularFiltros em
-    // js/ui/dashboard.js): inclui até dezembro, mesmo sem movimento
-    // nenhum ainda, pra dar pra ver a projeção do salário em meses futuros.
-    const mesAtual = chaveMesLocal(new Date());
-    const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.movimentosCarteira.map(m => m.criadoEm.slice(0, 7))])].sort().reverse();
-    select.innerHTML = '<option value="">Todos os meses</option>' +
-        meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
-
-    if (!filtroMesCarteirasInicializado) {
-        filtroMesCarteiras = mesAtual;
-        filtroMesCarteirasInicializado = true;
-    }
-    select.value = filtroMesCarteiras || "";
-}
-
 /** Salários ativos que ainda não foram efetivados (nenhum depósito
  *  vinculado) em "mesChave" — devolve um "movimento" projetado pra
  *  cada um, só pra exibição (nunca gravado). Sem data fixa: o salário
@@ -139,6 +111,7 @@ function salariosVirtuaisParaMes(mesChave) {
     if (!mesChave) return [];
 
     return APP.salarios
+        .filter(ehMeu)
         .filter(s => s.ativo
             && s.criadoEm.slice(0, 7) <= mesChave
             && !APP.movimentosCarteira.some(m => m.salarioId === s.id && m.criadoEm.slice(0, 7) === mesChave))
@@ -159,10 +132,10 @@ function renderizarKpisCarteiras() {
     const container = document.getElementById("kpisCarteiras");
     if (!container) return;
 
-    container.innerHTML = APP.carteiras.map((c, indice) => `
+    container.innerHTML = APP.carteiras.filter(ehMeu).map(c => `
         <div class="stat-tile">
-            ${statIconePessoa(c.usuarioNome, indice)}
-            <div class="stat-label">Carteira de ${escaparHtml(c.usuarioNome)}</div>
+            ${statIconePessoa(c.usuarioNome, APP.carteiras.indexOf(c))}
+            <div class="stat-label">Minha carteira</div>
             <div class="stat-valor">${formatarMoeda(c.saldo)}</div>
         </div>
     `).join("");
@@ -173,6 +146,7 @@ function renderizarSelectCarteiras() {
     if (!select) return;
 
     select.innerHTML = APP.carteiras
+        .filter(ehMeu)
         .map(c => `<option value="${c.id}">Carteira de ${escaparHtml(c.usuarioNome)}</option>`)
         .join("");
 }
@@ -181,13 +155,11 @@ function renderizarMovimentos() {
     const container = document.getElementById("listaMovimentos");
     if (!container) return;
 
-    const listaReal = filtroMesCarteiras
-        ? APP.movimentosCarteira.filter(m => m.criadoEm.slice(0, 7) === filtroMesCarteiras)
-        : APP.movimentosCarteira;
+    const listaReal = APP.movimentosCarteira.filter(m =>
+        String(m.carteiraId) === String(minhaCarteira()?.id) && m.criadoEm.slice(0, 7) === APP.mesGlobal
+    );
 
-    // Projeção do salário só faz sentido com um mês específico
-    // selecionado (não dá pra projetar em cima de "Todos os meses").
-    const lista = [...listaReal, ...salariosVirtuaisParaMes(filtroMesCarteiras)]
+    const lista = [...listaReal, ...salariosVirtuaisParaMes(APP.mesGlobal)]
         .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
 
     if (lista.length === 0) {

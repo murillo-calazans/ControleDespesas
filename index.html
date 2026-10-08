@@ -16,9 +16,9 @@
          poder ajustar a cor da barra de status) e antes dos <link
          rel="stylesheet"> abaixo (pra já achar o atributo no <html>
          quando o CSS for aplicado). -->
-    <script src="js/core/tema.js?v=202609091600"></script>
-    <link rel="stylesheet" href="css/style.css?v=202609091600">
-    <link rel="stylesheet" href="css/componentes.css?v=202609092230">
+    <script src="js/core/tema.js?v=202610081000"></script>
+    <link rel="stylesheet" href="css/style.css?v=202610081000">
+    <link rel="stylesheet" href="css/componentes.css?v=202610081300">
 </head>
 <body class="nao-autenticado">
 
@@ -56,6 +56,12 @@
         </div>
     </header>
 
+    <div class="barra-mes-global">
+        <button type="button" id="btnMesGlobalAnterior" class="botao-mes-global" title="Mês anterior">‹</button>
+        <button type="button" id="rotuloMesGlobal" class="rotulo-mes-global"></button>
+        <button type="button" id="btnMesGlobalProximo" class="botao-mes-global" title="Próximo mês">›</button>
+    </div>
+
     <nav class="abas">
         <div class="abas-pill">
             <button type="button" data-aba="resumo" class="aba-ativa">Resumo</button>
@@ -64,6 +70,7 @@
             <button type="button" data-aba="cartoes">Cartões</button>
             <button type="button" data-aba="fixas">Fixas</button>
             <button type="button" data-aba="investimentos">Investimentos</button>
+            <button type="button" data-aba="casal">Casal</button>
         </div>
     </nav>
 
@@ -102,12 +109,6 @@
 
             <section class="cartao">
                 <div class="filtros-linha">
-                    <label>Mês
-                        <select id="filtroMes"></select>
-                    </label>
-                    <label>Pessoa
-                        <select id="filtroPessoa"></select>
-                    </label>
                     <label>Categoria
                         <select id="filtroCategoria"></select>
                     </label>
@@ -151,11 +152,6 @@
 
             <section class="cartao">
                 <h2>Movimentos</h2>
-                <div class="filtros-linha">
-                    <label>Mês
-                        <select id="filtroMesCarteiras"></select>
-                    </label>
-                </div>
                 <div id="listaMovimentos"></div>
             </section>
 
@@ -200,13 +196,24 @@
             <div id="kpisInvestimentos" class="kpi-grid"></div>
 
             <section class="cartao">
-                <h2>Investimentos</h2>
-                <div class="filtros-linha">
-                    <label>Mês
-                        <select id="filtroMesInvestimentos"></select>
-                    </label>
-                </div>
+                <h2>Aportes do mês</h2>
                 <div id="listaInvestimentos"></div>
+            </section>
+
+        </div>
+
+        <div data-aba-conteudo="casal" hidden>
+
+            <div id="kpisCasal" class="kpi-grid"></div>
+
+            <section class="cartao">
+                <h2>Lado a lado</h2>
+                <div id="comparativoCasal"></div>
+            </section>
+
+            <section class="cartao">
+                <h2>Despesas em conjunto</h2>
+                <div id="listaCompartilhadas"></div>
             </section>
 
         </div>
@@ -228,7 +235,8 @@
          versionado no próprio nome do pacote, @2). -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config/supabase.js?v=202609081200"></script>
-    <script src="js/core/state.js?v=202609081651"></script>
+    <script src="js/core/pessoa.js?v=202610081300"></script>
+    <script src="js/core/state.js?v=202610081300"></script>
     <script src="js/core/icones.js?v=202609081200"></script>
     <script src="js/services/auth.js?v=202609081200"></script>
     <script src="js/services/despesas.js?v=202609081657"></script>
@@ -237,19 +245,21 @@
     <script src="js/services/investimentos.js?v=202609092230"></script>
     <script src="js/services/despesasFixas.js?v=202609081200"></script>
     <script src="js/services/insights.js?v=202609081200"></script>
-    <script src="js/ui/login.js?v=202609081200"></script>
-    <script src="js/ui/perfil.js?v=202609091600"></script>
+    <script src="js/ui/login.js?v=202610081000"></script>
+    <script src="js/ui/perfil.js?v=202610081000"></script>
     <script src="js/ui/modal.js?v=202609081200"></script>
-    <script src="js/ui/dashboard.js?v=202609092000"></script>
-    <script src="js/ui/resumo.js?v=202609092000"></script>
-    <script src="js/ui/projecao.js?v=202609092000"></script>
+    <script src="js/ui/dashboard.js?v=202610081400"></script>
+    <script src="js/ui/resumo.js?v=202610081400"></script>
+    <script src="js/ui/projecao.js?v=202610081300"></script>
     <script src="js/ui/insights.js?v=202609081200"></script>
-    <script src="js/ui/abas.js?v=202609081200"></script>
-    <script src="js/ui/carteiras.js?v=202609092000"></script>
-    <script src="js/ui/cartoes.js?v=202609091530"></script>
-    <script src="js/ui/investimentos.js?v=202609092230"></script>
-    <script src="js/ui/despesasFixas.js?v=202609092000"></script>
-    <script src="js/core/app.js?v=202609091600"></script>
+    <script src="js/ui/abas.js?v=202610081300"></script>
+    <script src="js/ui/mesGlobal.js?v=202610081300"></script>
+    <script src="js/ui/carteiras.js?v=202610081300"></script>
+    <script src="js/ui/cartoes.js?v=202610081300"></script>
+    <script src="js/ui/investimentos.js?v=202610081300"></script>
+    <script src="js/ui/casal.js?v=202610081400"></script>
+    <script src="js/ui/despesasFixas.js?v=202610081300"></script>
+    <script src="js/core/app.js?v=202610081000"></script>
 
 </body>
 </html>

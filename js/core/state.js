@@ -37,12 +37,15 @@ const APP = {
     despesasFixasPuladas: [],
     salarios: [],
 
-    // Aba visível no momento ("resumo" | "despesas" | "carteiras" | "cartoes" | "fixas" | "investimentos").
+    // Aba visível no momento ("resumo" | "despesas" | "carteiras" | "cartoes" | "fixas" | "investimentos" | "casal").
     abaAtiva: "resumo",
 
+    // Mês escolhido na barra logo abaixo do header ("YYYY-MM") — vale
+    // pra todas as abas ao mesmo tempo (ver js/ui/mesGlobal.js). Sempre
+    // abre no mês atual após o login.
+    mesGlobal: null,
+
     filtros: {
-        mes: null,        // "YYYY-MM" ou null (todos os meses)
-        usuarioId: null,  // id em "usuarios" ou null (todo mundo)
         categoria: null   // string ou null (todas)
     }
 

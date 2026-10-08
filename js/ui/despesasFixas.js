@@ -14,10 +14,17 @@ function registrarDespesasFixas() {
     // ligadas a cada renderização (renderizarListaDespesasFixas).
 }
 
-/** Projeção do mês: soma das fixas ativas + média das despesas
- *  variáveis (sem despesa_fixa_id) dos últimos 3 meses fechados. */
+/** Fixas que entram na minha visão: minhas e "Ambos" (as só do
+ *  parceiro ficam na aba Casal). Valores sempre pela minha parte
+ *  (minhaParte em js/core/pessoa.js). */
+function minhasDespesasFixas() {
+    return APP.despesasFixas.filter(despesaMeEnvolve);
+}
+
+/** Projeção do mês (minha parte): soma das fixas ativas + média das
+ *  despesas variáveis (sem despesa_fixa_id) dos últimos 3 meses fechados. */
 function calcularProjecaoMensal() {
-    const totalFixas = APP.despesasFixas.filter(f => f.ativa).reduce((soma, f) => soma + f.valor, 0);
+    const totalFixas = minhasDespesasFixas().filter(f => f.ativa).reduce((soma, f) => soma + minhaParte(f), 0);
     const mediaVariaveis = mediaGastosVariaveisUltimosMeses(3);
     return totalFixas + mediaVariaveis;
 }
@@ -37,7 +44,7 @@ function mediaGastosVariaveisUltimosMeses(qtdMeses) {
     const porMes = new Map();
     for (const d of variaveis) {
         if (!mesesAlvo.includes(d.dataDespesa.slice(0, 7))) continue;
-        porMes.set(d.dataDespesa.slice(0, 7), (porMes.get(d.dataDespesa.slice(0, 7)) ?? 0) + d.valor);
+        porMes.set(d.dataDespesa.slice(0, 7), (porMes.get(d.dataDespesa.slice(0, 7)) ?? 0) + minhaParte(d));
     }
 
     if (porMes.size === 0) return 0;
@@ -54,13 +61,13 @@ function renderizarKpisFixas() {
     const container = document.getElementById("kpisFixas");
     if (!container) return;
 
-    const totalFixas = APP.despesasFixas.filter(f => f.ativa).reduce((soma, f) => soma + f.valor, 0);
+    const totalFixas = minhasDespesasFixas().filter(f => f.ativa).reduce((soma, f) => soma + minhaParte(f), 0);
     const projecao = calcularProjecaoMensal();
 
     container.innerHTML = `
         <div class="stat-tile">
             ${statIcone("🔁", "laranja")}
-            <div class="stat-label">Total em gastos fixos</div>
+            <div class="stat-label">Meus gastos fixos</div>
             <div class="stat-valor">${formatarMoeda(totalFixas)}</div>
         </div>
         <div class="stat-tile">
@@ -82,7 +89,9 @@ function renderizarListaDespesasFixas() {
     const container = document.getElementById("listaDespesasFixas");
     if (!container) return;
 
-    if (APP.despesasFixas.length === 0) {
+    const fixas = minhasDespesasFixas();
+
+    if (fixas.length === 0) {
         container.innerHTML = '<p class="alerta-vazio">Nenhuma despesa fixa ainda — diga algo como "Aluguel 1500 fixo" na aba Despesas.</p>';
         return;
     }
@@ -100,11 +109,11 @@ function renderizarListaDespesasFixas() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${APP.despesasFixas.map(f => `
+                    ${fixas.map(f => `
                         <tr>
                             <td>${escaparHtml(f.descricao || "-")}</td>
                             <td>${escaparHtml(f.categoria)}</td>
-                            <td class="valor-cell">${formatarMoeda(f.valor)}</td>
+                            <td class="valor-cell">${formatarMoeda(minhaParte(f))}${f.compartilhada ? ` <span class="badge-parcela" title="Total ${formatarMoeda(f.valor)}, dividido">ambos</span>` : ""}</td>
                             <td>
                                 <button type="button" class="botao-icone" data-toggle-id="${f.id}" data-ativa="${f.ativa}">
                                     ${f.ativa ? "⏸️ Pausar" : "▶️ Reativar"}

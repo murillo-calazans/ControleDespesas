@@ -20,18 +20,11 @@ function registrarDashboard() {
     const form = document.getElementById("formNovaDespesa");
     if (form) form.addEventListener("submit", aoRegistrarDespesa);
 
-    const filtroMes = document.getElementById("filtroMes");
-    const filtroPessoa = document.getElementById("filtroPessoa");
     const filtroCategoria = document.getElementById("filtroCategoria");
-
-    if (filtroMes) filtroMes.addEventListener("change", aoMudarFiltro);
-    if (filtroPessoa) filtroPessoa.addEventListener("change", aoMudarFiltro);
     if (filtroCategoria) filtroCategoria.addEventListener("change", aoMudarFiltro);
 }
 
 function aoMudarFiltro() {
-    APP.filtros.mes = document.getElementById("filtroMes").value || null;
-    APP.filtros.usuarioId = document.getElementById("filtroPessoa").value || null;
     APP.filtros.categoria = document.getElementById("filtroCategoria").value || null;
     renderizarDashboard();
 }
@@ -139,6 +132,11 @@ async function inicializarDadosAutenticado() {
     APP.despesasFixasPuladas = despesasFixasPuladas;
     APP.salarios = salarios;
 
+    // Sempre abre no mês atual — o usuário quer ver o mês corrente ao
+    // entrar, não o último que tinha navegado.
+    APP.mesGlobal = chaveMesLocal(new Date());
+    renderizarBarraMesGlobal();
+
     popularFiltros();
     renderizarDashboard();
     renderizarCarteiras();
@@ -149,33 +147,10 @@ async function inicializarDadosAutenticado() {
 }
 
 function popularFiltros() {
-    const filtroMes = document.getElementById("filtroMes");
-    const filtroPessoa = document.getElementById("filtroPessoa");
     const filtroCategoria = document.getElementById("filtroCategoria");
     const inputPessoaDespesa = document.getElementById("inputPessoaDespesa");
 
-    if (filtroMes && filtroPessoa && filtroCategoria) {
-        // Sempre inclui do mês atual até dezembro (mesmo sem despesa
-        // lançada neles ainda), pra dar pra selecionar meses futuros e já
-        // ver a projeção das despesas fixas neles (ver
-        // despesasFixasVirtuaisParaMes).
-        const mesAtual = chaveMesLocal(new Date());
-        const meses = [...new Set([...mesesAteFimDoAno(mesAtual), ...APP.despesas.map(mesEfetivoDespesa)])].sort().reverse();
-        filtroMes.innerHTML = '<option value="">Todos os meses</option>' +
-            meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
-
-        // Abre por padrão no mês atual, em vez de "Todos os meses" — o
-        // usuário sempre quer ver o mês corrente ao abrir o site, não a
-        // lista inteira desde o começo.
-        filtroMes.value = mesAtual;
-        APP.filtros.mes = mesAtual;
-
-        // Parte de APP.carteiras (1:1 com usuarios) em vez de APP.despesas,
-        // senão uma pessoa que nunca registrou nada no próprio nome (só em
-        // despesas compartilhadas ou lançadas pelo parceiro) não apareceria.
-        filtroPessoa.innerHTML = '<option value="">Todos</option>' +
-            APP.carteiras.map(c => `<option value="${c.usuarioId}">${escaparHtml(c.usuarioNome)}</option>`).join("");
-
+    if (filtroCategoria) {
         filtroCategoria.innerHTML = '<option value="">Todas as categorias</option>' +
             CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join("");
     }
@@ -222,32 +197,15 @@ function rotuloMes(chaveMes) {
     return `${nomes[Number(mes) - 1]}/${ano}`;
 }
 
-/** Todos os meses ("YYYY-MM") de "mesInicial" até dezembro do mesmo ano. */
-function mesesAteFimDoAno(mesInicial) {
-    const [ano, mes] = mesInicial.split("-").map(Number);
-    const meses = [];
-    for (let m = mes; m <= 12; m++) meses.push(`${ano}-${String(m).padStart(2, "0")}`);
-    return meses;
-}
-
 /** Filtro de pessoa/categoria (não de mês — usado tanto pras despesas
- *  reais quanto pras fixas projetadas, ver despesasFixasVirtuaisParaMes). */
+ *  reais quanto pras fixas projetadas, ver despesasFixasVirtuaisParaMes).
+ *  Pessoa é sempre quem está logado: só as despesas dele e as "Ambos"
+ *  (ver despesaMeEnvolve em js/core/pessoa.js) — as do parceiro só
+ *  aparecem na aba Casal. */
 function correspondeFiltroPessoaCategoria(d) {
-    if (APP.filtros.usuarioId) {
-        // Despesa compartilhada entra no filtro de qualquer uma das duas
-        // pessoas (é metade de cada um), não só de quem registrou.
-        const pertenceAoFiltro = String(d.usuarioId) === String(APP.filtros.usuarioId) || d.compartilhada;
-        if (!pertenceAoFiltro) return false;
-    }
+    if (!despesaMeEnvolve(d)) return false;
     if (APP.filtros.categoria && d.categoria !== APP.filtros.categoria) return false;
     return true;
-}
-
-function aplicarFiltros() {
-    return APP.despesas.filter(d => {
-        if (APP.filtros.mes && mesEfetivoDespesa(d) !== APP.filtros.mes) return false;
-        return correspondeFiltroPessoaCategoria(d);
-    });
 }
 
 /** 5º dia útil (seg-sex, sem calendário de feriados) do mês "mesChave"
@@ -275,7 +233,9 @@ function quintoDiaUtilISO(mesChave) {
  *  puladas nesse mês (ver pularDespesaFixa) — devolve uma "despesa"
  *  projetada pra cada uma, só pra exibição (nunca gravada, não pode
  *  ser editada, só pulada). Assim o mês aparece completo no relatório
- *  mesmo antes do lançamento automático acontecer. */
+ *  mesmo antes do lançamento automático acontecer. Devolve as do casal
+ *  inteiro, sem filtro — cada tela filtra como precisa (Despesas,
+ *  Resumo, Casal). */
 function despesasFixasVirtuaisParaMes(mesChave) {
     if (!mesChave) return [];
 
@@ -303,16 +263,24 @@ function despesasFixasVirtuaisParaMes(mesChave) {
             confiancaIA: null,
             compartilhada: f.compartilhada,
             virtual: true
-        }))
-        .filter(correspondeFiltroPessoaCategoria);
+        }));
 }
 
-/** Valor "de fato" de uma despesa no contexto do filtro de pessoa atual:
- *  metade, se for compartilhada e o filtro estiver numa pessoa específica
- *  (a outra metade é da outra pessoa); valor cheio nos demais casos
- *  (inclusive compartilhada sem filtro de pessoa — "Todos"). */
+/** Tudo que conta como gasto do casal em "mesChave": despesas reais
+ *  daquele mês (pela competência da fatura, no crédito) + fixas ainda
+ *  não lançadas. Base comum do Resumo, da aba Casal e da aba Despesas,
+ *  pra os totais baterem entre as telas. */
+function gastosDoMes(mesChave) {
+    return [
+        ...APP.despesas.filter(d => mesEfetivoDespesa(d) === mesChave),
+        ...despesasFixasVirtuaisParaMes(mesChave)
+    ];
+}
+
+/** Valor "de fato" de uma despesa na visão de quem está logado:
+ *  metade, se for compartilhada (a outra metade é do parceiro). */
 function valorEfetivo(despesa) {
-    return APP.filtros.usuarioId && despesa.compartilhada ? despesa.valor / 2 : despesa.valor;
+    return minhaParte(despesa);
 }
 
 /** Se uma despesa já saiu de fato da carteira de alguém. Fora do
@@ -340,9 +308,8 @@ function despesaEstaPaga(despesa) {
 }
 
 function renderizarDashboard() {
-    // As despesas fixas projetadas só valem quando um mês específico
-    // está selecionado (não dá pra projetar em cima de "Todos os meses").
-    const lista = [...aplicarFiltros(), ...despesasFixasVirtuaisParaMes(APP.filtros.mes)]
+    const lista = gastosDoMes(APP.mesGlobal)
+        .filter(correspondeFiltroPessoaCategoria)
         .sort((a, b) => b.dataDespesa.localeCompare(a.dataDespesa));
     renderizarKpis(lista);
     renderizarTabela(lista);
@@ -358,37 +325,16 @@ function renderizarKpis(lista) {
     for (const d of lista) porCategoria.set(d.categoria, (porCategoria.get(d.categoria) ?? 0) + valorEfetivo(d));
     const categoriaTop = [...porCategoria.entries()].sort((a, b) => b[1] - a[1])[0];
 
-    // Com filtro de pessoa ativo, a lista já é só dela (dela sozinha +
-    // metade das compartilhadas) — um tile só, no nome dela. Sem filtro
-    // ("Todos"), um tile por pessoa, cada um já somando a própria metade
-    // de toda despesa "Ambos" — mesma conta de quando filtra por ela,
-    // só que pras duas ao mesmo tempo (nunca um bucket "Ambos" à parte,
-    // senão o valor dela some do total de ninguém).
-    const porPessoa = new Map();
-    if (APP.filtros.usuarioId) {
-        const nomeFiltro = APP.carteiras.find(c => String(c.usuarioId) === String(APP.filtros.usuarioId))?.usuarioNome ?? "-";
-        porPessoa.set(nomeFiltro, total);
-    } else {
-        for (const c of APP.carteiras) {
-            const totalPessoa = lista.reduce((soma, d) => {
-                if (d.compartilhada) return soma + d.valor / 2;
-                return String(d.usuarioId) === String(c.usuarioId) ? soma + d.valor : soma;
-            }, 0);
-            porPessoa.set(c.usuarioNome, totalPessoa);
-        }
-    }
-
-    // Valor cheio (não a metade) de tudo que está marcado "Ambos" —
-    // só informativo, não entra na soma dos tiles por pessoa (essa já
-    // conta a metade de cada um separadamente).
-    const totalCompartilhado = lista
+    // Só a MINHA metade de cada despesa "Ambos" — o valor cheio delas
+    // (e o total do parceiro) fica na aba Casal.
+    const minhaParteCompartilhada = lista
         .filter(d => d.compartilhada)
-        .reduce((soma, d) => soma + d.valor, 0);
+        .reduce((soma, d) => soma + valorEfetivo(d), 0);
 
     container.innerHTML = `
         <div class="stat-tile">
             ${statIcone("💰", "verde")}
-            <div class="stat-label">Total no período</div>
+            <div class="stat-label">Meu total em ${rotuloMes(APP.mesGlobal)}</div>
             <div class="stat-valor">${formatarMoeda(total)}</div>
         </div>
         <div class="stat-tile">
@@ -404,17 +350,10 @@ function renderizarKpis(lista) {
         </div>
         <div class="stat-tile">
             ${statIcone("🤝", "roxo")}
-            <div class="stat-label">Gasto em conjunto</div>
-            <div class="stat-valor">${formatarMoeda(totalCompartilhado)}</div>
-            <div class="stat-sublinha">despesas marcadas como Ambos, valor cheio</div>
+            <div class="stat-label">Minha parte em "Ambos"</div>
+            <div class="stat-valor">${formatarMoeda(minhaParteCompartilhada)}</div>
+            <div class="stat-sublinha">metade das despesas divididas — o total do casal fica na aba Casal</div>
         </div>
-        ${[...porPessoa.entries()].map(([nome, valor], indice) => `
-            <div class="stat-tile">
-                ${statIconePessoa(nome, indice)}
-                <div class="stat-label">Total de ${escaparHtml(nome)}</div>
-                <div class="stat-valor">${formatarMoeda(valor)}</div>
-            </div>
-        `).join("")}
     `;
 }
 

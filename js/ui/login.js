@@ -70,6 +70,10 @@ function mostrarTelaLogin() {
 function mostrarAppAutenticado() {
     document.body.classList.remove("nao-autenticado");
 
+    // Cada um do casal tem a própria cor de destaque (ver js/core/tema.js).
+    aplicarCorDestaque(corDestaqueSalva(APP.usuario.id));
+    localStorage.setItem(CHAVE_COR_DESTAQUE, corDestaqueAtual());
+
     const rotulo = document.getElementById("usuarioLogado");
     if (rotulo) rotulo.textContent = APP.usuario.nome;
 

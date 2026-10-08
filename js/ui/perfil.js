@@ -37,6 +37,14 @@ function perfilHtml() {
             <span class="perfil-valor perfil-senha-mascarada">••••••••</span>
         </div>
 
+        <div class="perfil-linha">
+            <span class="perfil-rotulo">Cor</span>
+            <span class="perfil-cores">
+                ${botaoCorDestaqueHtml("verde", "🌿 Verde")}
+                ${botaoCorDestaqueHtml("rosa", "🌸 Rosa")}
+            </span>
+        </div>
+
         <div class="perfil-acoes">
             <button type="button" id="btnAlternarTema" class="botao-secundario">${rotuloBotaoTema()}</button>
             <button type="button" id="btnAbrirTrocaSenha" class="botao-secundario">🔒 Alterar senha</button>
@@ -52,6 +60,11 @@ function perfilHtml() {
     `;
 }
 
+function botaoCorDestaqueHtml(cor, rotulo) {
+    const ativa = corDestaqueAtual() === cor ? " perfil-cor-ativa" : "";
+    return `<button type="button" class="perfil-cor perfil-cor-${cor}${ativa}" data-cor-destaque="${cor}">${rotulo}</button>`;
+}
+
 function rotuloBotaoTema() {
     return temaAtual() === "escuro" ? "☀️ Modo claro" : "🌙 Modo escuro";
 }
@@ -64,6 +77,15 @@ function registrarEventosPerfil() {
             btnTema.textContent = rotuloBotaoTema();
         });
     }
+
+    document.querySelectorAll("[data-cor-destaque]").forEach(botao => {
+        botao.addEventListener("click", () => {
+            escolherCorDestaque(botao.dataset.corDestaque, APP.usuario?.id);
+            document.querySelectorAll("[data-cor-destaque]").forEach(b => {
+                b.classList.toggle("perfil-cor-ativa", b.dataset.corDestaque === corDestaqueAtual());
+            });
+        });
+    });
 
     const btnAbrirTroca = document.getElementById("btnAbrirTrocaSenha");
     const form = document.getElementById("formTrocaSenha");

@@ -8,17 +8,23 @@
  * database/schema-investimentos-taxa-juros.sql).
  */
 
-let filtroMesInvestimentos = null; // "YYYY-MM" ou null (todos os meses)
-
 function registrarInvestimentos() {
     // Sem formulário próprio — o registro é feito pela caixa de texto
-    // compartilhada em js/ui/dashboard.js (aoRegistrarDespesa).
+    // compartilhada em js/ui/dashboard.js (aoRegistrarDespesa). O mês
+    // vem da barra global (js/ui/mesGlobal.js).
+}
 
-    const filtroMes = document.getElementById("filtroMesInvestimentos");
-    if (filtroMes) filtroMes.addEventListener("change", () => {
-        filtroMesInvestimentos = filtroMes.value || null;
-        renderizarListaInvestimentos();
-    });
+/** Meus aportes (só de quem está logado — os do parceiro ficam na aba
+ *  Casal) feitos no mês global. */
+function investimentosDoMes() {
+    return APP.investimentos.filter(i => ehMeu(i) && i.dataInvestimento.slice(0, 7) === APP.mesGlobal);
+}
+
+/** Tudo que foi aportado até o fim do mês global — é o "total
+ *  investido" visto daquele mês (navegar pra um mês passado mostra
+ *  quanto havia investido na época, não o total de hoje). */
+function investimentosAteOMes() {
+    return APP.investimentos.filter(i => ehMeu(i) && i.dataInvestimento.slice(0, 7) <= APP.mesGlobal);
 }
 
 /** Normaliza a taxa configurada (mensal ou anual) pra um equivalente
@@ -39,41 +45,32 @@ function rendimentoMensalEstimado(investimento) {
 
 function renderizarInvestimentos() {
     renderizarKpisInvestimentos();
-    popularFiltroMesInvestimentos();
     renderizarListaInvestimentos();
-}
-
-function popularFiltroMesInvestimentos() {
-    const select = document.getElementById("filtroMesInvestimentos");
-    if (!select) return;
-
-    const meses = [...new Set(APP.investimentos.map(i => i.dataInvestimento.slice(0, 7)))].sort().reverse();
-    select.innerHTML = '<option value="">Todos os meses</option>' +
-        meses.map(m => `<option value="${m}">${rotuloMes(m)}</option>`).join("");
-    select.value = filtroMesInvestimentos || "";
 }
 
 function renderizarKpisInvestimentos() {
     const container = document.getElementById("kpisInvestimentos");
     if (!container) return;
 
-    const lista = filtroMesInvestimentos
-        ? APP.investimentos.filter(i => i.dataInvestimento.slice(0, 7) === filtroMesInvestimentos)
-        : APP.investimentos;
+    const lista = investimentosAteOMes();
 
     const total = lista.reduce((soma, i) => soma + i.valor, 0);
+    const aportesMes = investimentosDoMes().reduce((soma, i) => soma + i.valor, 0);
 
     const rendimentoMensal = lista.reduce((soma, i) => soma + (rendimentoMensalEstimado(i) ?? 0), 0);
     const temAlgumaTaxa = lista.some(i => rendimentoMensalEstimado(i) !== null);
 
-    const porPessoa = new Map();
-    for (const i of lista) porPessoa.set(i.usuarioNome, (porPessoa.get(i.usuarioNome) ?? 0) + i.valor);
-
     container.innerHTML = `
         <div class="stat-tile">
             ${statIcone("📊", "verde")}
-            <div class="stat-label">Total investido</div>
+            <div class="stat-label">Meu total investido</div>
             <div class="stat-valor">${formatarMoeda(total)}</div>
+            <div class="stat-sublinha">Acumulado até ${rotuloMes(APP.mesGlobal)}</div>
+        </div>
+        <div class="stat-tile">
+            ${statIcone("➕", "laranja")}
+            <div class="stat-label">Meus aportes em ${rotuloMes(APP.mesGlobal)}</div>
+            <div class="stat-valor">${formatarMoeda(aportesMes)}</div>
         </div>
         ${temAlgumaTaxa ? `
         <div class="stat-tile">
@@ -83,13 +80,6 @@ function renderizarKpisInvestimentos() {
             <div class="stat-sublinha">Só dos investimentos com taxa configurada</div>
         </div>
         ` : ""}
-        ${[...porPessoa.entries()].map(([nome, valor], indice) => `
-            <div class="stat-tile">
-                ${statIconePessoa(nome, indice)}
-                <div class="stat-label">Investido por ${escaparHtml(nome)}</div>
-                <div class="stat-valor">${formatarMoeda(valor)}</div>
-            </div>
-        `).join("")}
     `;
 }
 
@@ -97,12 +87,10 @@ function renderizarListaInvestimentos() {
     const container = document.getElementById("listaInvestimentos");
     if (!container) return;
 
-    const lista = filtroMesInvestimentos
-        ? APP.investimentos.filter(i => i.dataInvestimento.slice(0, 7) === filtroMesInvestimentos)
-        : APP.investimentos;
+    const lista = investimentosDoMes();
 
     if (lista.length === 0) {
-        container.innerHTML = '<p class="alerta-vazio">Nenhum investimento encontrado.</p>';
+        container.innerHTML = '<p class="alerta-vazio">Nenhum aporte nesse mês.</p>';
         return;
     }
 
@@ -114,7 +102,6 @@ function renderizarListaInvestimentos() {
                         <th>Data</th>
                         <th>Descrição</th>
                         <th>Conta</th>
-                        <th>Pessoa</th>
                         <th>Valor</th>
                         <th>Taxa</th>
                         <th>Rendimento/mês</th>
@@ -127,7 +114,6 @@ function renderizarListaInvestimentos() {
                             <td>${formatarDataBR(i.dataInvestimento)}</td>
                             <td title="${escaparHtml(i.mensagemOriginal)}">${escaparHtml(i.descricao || i.mensagemOriginal)}</td>
                             <td>${escaparHtml(i.conta || "-")}</td>
-                            <td>${escaparHtml(i.usuarioNome)}</td>
                             <td class="valor-cell">${formatarMoeda(i.valor)}</td>
                             <td>
                                 <div class="celula-taxa-juros">
